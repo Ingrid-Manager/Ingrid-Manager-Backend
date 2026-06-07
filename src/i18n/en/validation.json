@@ -1,0 +1,9 @@
+{
+  "isEmail": "Please enter a valid email address.",
+  "isNotEmpty": "This field should not be empty.",
+  "errors": {
+    "userNotFound": "Email address or password is incorrect.",
+    "incorrectPassword": "Email address or password is incorrect.",
+    "userNotApproved": "The account is locked. After registration, approval by the administration is required!"
+  }
+}

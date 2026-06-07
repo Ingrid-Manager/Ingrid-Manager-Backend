@@ -1,0 +1,9 @@
+{
+    "isEmail": "Bitte geben Sie ein gültige E-Mail Adresse ein!",
+    "isNotEmpty": "Dieses Feld darf nicht leer sein!",
+    "errors": {
+        "userNotFound": "E-Mail Adresse oder Passwort falsch!",
+        "incorrectPassword": "E-Mail Adresse oder Passwort falsch!",
+        "userNotApproved": "Das Konto ist gesperrt. Nach der Registrierung ist eine Freigabe durch die Verwaltung erforderlich!"
+    }
+}
