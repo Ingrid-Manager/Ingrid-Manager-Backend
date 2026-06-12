@@ -35,10 +35,6 @@ export class UpdateCalendarEventDto {
   isBackground?: boolean;
 
   @IsOptional()
-  @IsString()
-  rrule?: string;
-
-  @IsOptional()
   @IsNumber()
   roomid?: number;
 

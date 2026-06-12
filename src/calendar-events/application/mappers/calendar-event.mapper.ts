@@ -16,7 +16,8 @@ export class CalnedarEventMapper {
       room_title: entity.room?.title,
       user_id: entity.user.id,
       user_name: entity.user.firstName + ' ' + entity.user.lastName,
-      rrule: entity.rrule,
+      seriesid: entity.seriesid,
+      isModified: entity.isModified,
     };
   }
 }

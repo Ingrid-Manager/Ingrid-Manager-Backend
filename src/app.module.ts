@@ -22,6 +22,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { CalendarEventsModule } from './calendar-events/calendar-events.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReorganizationModule } from './reorganization/reorganization.module';
+import { SeriesEventsModule } from './series-events/series-events.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -73,6 +74,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     CalendarEventsModule,
     ScheduleModule.forRoot(),
     ReorganizationModule,
+    SeriesEventsModule,
   ],
 })
 export class AppModule {}

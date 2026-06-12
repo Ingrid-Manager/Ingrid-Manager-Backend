@@ -124,6 +124,13 @@ export class CalendarEventsService {
       event.id,
     );
 
+    /*
+     * Serienevent?
+     */
+    if (event.seriesid) {
+      event.isModified = true;
+    }
+
     Object.assign(event, dto);
 
     return this.repo.save(event);
@@ -142,8 +149,15 @@ export class CalendarEventsService {
       throw new ForbiddenException('You cannot delete this event');
     }
 
-    await this.repo.softDelete(id);
+    /*
+     * Serienevent?
+     */
+    if (event.seriesid) {
+      event.isModified = true;
+      await this.repo.save(event);
+    }
 
+    await this.repo.softDelete(id);
     return { success: true };
   }
 }

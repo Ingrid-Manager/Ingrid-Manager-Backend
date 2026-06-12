@@ -29,10 +29,6 @@ export class CreateCalendarEventDto {
   @IsBoolean()
   isBackground?: boolean;
 
-  @IsOptional()
-  @IsString()
-  rrule?: string;
-
   @IsNumber()
   roomid!: number;
 
