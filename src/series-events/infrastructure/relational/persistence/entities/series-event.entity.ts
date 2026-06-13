@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 
 import { CalendarEvent } from '../../../../../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
+import { SeriesFrequency } from '../../../../frequencys.enum';
 
 @Index('IDX_SERIES_EVENT_ACTIVE', ['active'])
 @Index('IDX_SERIES_EVENT_LAST_GENERATED', ['lastGeneratedUntil'])
@@ -34,6 +35,13 @@ export class SeriesEvent {
 
   @Column()
   createdbyid!: number;
+
+  @Column({
+    type: 'enum',
+    enum: SeriesFrequency,
+    default: SeriesFrequency.WEEKLY,
+  })
+  frequency!: SeriesFrequency;
 
   /*
    * Uhrzeit des Serienstarts

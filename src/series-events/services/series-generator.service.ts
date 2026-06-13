@@ -29,6 +29,11 @@ export class SeriesGeneratorService {
 
       const mappedWeekday = weekday === 0 ? 7 : weekday;
 
+      if (!this.matchesFrequency(series, current)) {
+        current.setDate(current.getDate() + 1);
+        continue;
+      }
+
       if (series.weekdays.includes(mappedWeekday)) {
         await this.createOccurrence(manager, series, current);
       }
@@ -111,5 +116,20 @@ export class SeriesGeneratorService {
   private applyTime(date: Date, time: string) {
     const [hour, minute] = time.split(':').map(Number);
     date.setHours(hour, minute, 0, 0);
+  }
+
+  private matchesFrequency(series: SeriesEvent, current: Date): boolean {
+    if (series.frequency === 'WEEKLY') {
+      return true;
+    }
+
+    const diffDays = Math.floor(
+      (current.getTime() - series.seriesStart.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    return diffWeeks % 2 === 0;
   }
 }
