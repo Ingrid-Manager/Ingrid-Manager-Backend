@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateRoomDto } from './application/dto/create-room.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from './infrastructure/relational/persistence/entities/room.entity';
 import { NotFoundError } from 'rxjs';
 import { RoomMapper } from './application/mappers/room.mapper';
+import { UpdateRoomDto } from './application/dto/update-room.dto';
 
 @Injectable()
 export class RoomsService {
@@ -55,5 +56,18 @@ export class RoomsService {
     });
 
     return RoomMapper.toNameResponse(rooms);
+  }
+
+  async update(id: number, dto: UpdateRoomDto) {
+    const room = await this.repo.findOne({
+      where: { id },
+    });
+
+    if (!room) {
+      throw new NotFoundException(`Raum mit id ${id} nicht gefunden`);
+    }
+
+    Object.assign(room, dto);
+    return this.repo.save(room);
   }
 }
