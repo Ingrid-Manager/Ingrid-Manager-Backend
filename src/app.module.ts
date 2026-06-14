@@ -5,6 +5,7 @@ import databaseConfig from './database/config/database.config';
 import authConfig from './auth/config/auth.config';
 import appConfig from './config/app.config';
 import mailConfig from './mail/config/mail.config';
+import orgConfig from './config/settings.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -23,6 +24,7 @@ import { CalendarEventsModule } from './calendar-events/calendar-events.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReorganizationModule } from './reorganization/reorganization.module';
 import { SeriesEventsModule } from './series-events/series-events.module';
+import { SettingsModule } from './config/settings.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -35,7 +37,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, authConfig, appConfig, mailConfig],
+      load: [databaseConfig, authConfig, appConfig, mailConfig, orgConfig],
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,
@@ -75,6 +77,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     ScheduleModule.forRoot(),
     ReorganizationModule,
     SeriesEventsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
