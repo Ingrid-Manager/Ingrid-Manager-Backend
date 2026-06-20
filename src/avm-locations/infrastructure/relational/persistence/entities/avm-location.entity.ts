@@ -5,18 +5,18 @@ export class AvmLocation {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true })
+  @Column()
   title!: string;
 
-  @Column({ nullable: true })
-  ahaurl!: string;
+  @Column()
+  ahaurl?: string;
 
-  @Column({ nullable: true })
-  ahauser!: string;
+  @Column()
+  ahauser?: string;
 
-  @Column({ nullable: true })
+  @Column()
   ahapassword?: string;
 
-  @Column({ nullable: true })
-  ahasid!: string;
+  @Column()
+  ahasid?: string;
 }

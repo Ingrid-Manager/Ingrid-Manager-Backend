@@ -22,6 +22,8 @@ export class SeriesGeneratorService {
     from: Date,
     until: Date,
   ): Promise<void> {
+    let matchingWeekdays = 0;
+    let matchingFrequency = 0;
     const current = new Date(from);
 
     while (current <= until && current <= series.seriesEnd) {
@@ -33,13 +35,20 @@ export class SeriesGeneratorService {
         current.setDate(current.getDate() + 1);
         continue;
       }
+      matchingFrequency++;
 
       if (series.weekdays.includes(mappedWeekday)) {
+        matchingWeekdays++;
+
         await this.createOccurrence(manager, series, current);
       }
 
       current.setDate(current.getDate() + 1);
     }
+    console.log({
+      matchingFrequency,
+      matchingWeekdays,
+    });
   }
 
   private async createOccurrence(
@@ -72,23 +81,25 @@ export class SeriesGeneratorService {
         seriesid: series.id,
         start,
       },
-      withDeleted: true,
     });
 
     if (existing) {
+      console.log('EXISTING', start.toISOString());
       return;
     }
 
     /*
-     * Raumkonflikt?
+     * Raumkonflikt?.
      */
     const overlap = await this.overlapService.hasOverlap(
+      manager,
       series.roomid,
       start,
       end,
     );
 
     if (overlap) {
+      console.log('OVERLAP', start.toISOString());
       return;
     }
 
@@ -129,7 +140,14 @@ export class SeriesGeneratorService {
     );
 
     const diffWeeks = Math.floor(diffDays / 7);
-
-    return diffWeeks % 2 === 0;
+    const result = diffWeeks % 2 === 0;
+    /*console.log({
+      current: current.toISOString(),
+      seriesStart: series.seriesStart.toISOString(),
+      diffDays,
+      diffWeeks,
+      result,
+    });*/
+    return result;
   }
 }

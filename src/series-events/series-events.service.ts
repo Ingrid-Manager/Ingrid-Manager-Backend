@@ -107,8 +107,15 @@ export class SeriesEventsService {
       active: true,
       seriesStart: splitDate,
       seriesEnd: dto.seriesEnd ? new Date(dto.seriesEnd) : oldSeriesEnd,
+      frequency: dto.frequency ?? series.frequency,
+      lastGeneratedUntil: null,
     });
 
+    /*console.log({
+      splitDate,
+      weekdays: newSeries.weekdays,
+      frequency: newSeries.frequency,
+    });*/
     const generateUntil = new Date(splitDate);
     generateUntil.setFullYear(generateUntil.getFullYear() + 2);
 
@@ -149,7 +156,13 @@ export class SeriesEventsService {
         splitDate,
         generateUntil,
       );
+      const count = await manager.getRepository(CalendarEvent).count({
+        where: {
+          seriesid: saved.id,
+        },
+      });
 
+      console.log('NEW SERIES EVENTS', count);
       /*
        * Generierungsstatus aktualisieren
        */

@@ -4,6 +4,7 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -47,6 +48,7 @@ export class UserEntity extends EntityRelationalHelper {
   @ManyToOne(() => RoleEntity, {
     eager: true,
   })
+  @JoinColumn({ name: 'roleId' })
   role?: RoleEntity | null;
 
   @Column({ type: String, nullable: true })
@@ -55,14 +57,21 @@ export class UserEntity extends EntityRelationalHelper {
   @ManyToOne(() => StatusEntity, {
     eager: true,
   })
+  @JoinColumn({ name: 'statusId' })
   status?: StatusEntity;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({
+    type: 'datetime',
+  })
+  createdAt!: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @UpdateDateColumn({
+    type: 'datetime',
+  })
+  updatedAt!: Date;
 
-  @DeleteDateColumn()
-  deletedAt: Date;
+  @DeleteDateColumn({
+    type: 'datetime',
+  })
+  deletedAt?: Date | null;
 }

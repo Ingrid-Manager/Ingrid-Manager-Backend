@@ -12,28 +12,35 @@ export class Room {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true, comment: 'Bezeichnung des Raums' })
+  @Column({ comment: 'Bezeichnung des Raums' })
   title!: string;
 
-  @Column({ nullable: true, comment: 'AVM Geräte oder Gruppen ID' })
-  avm_id!: string;
+  @Column({
+    type: String,
+    nullable: true,
+    comment: 'AVM Geräte oder Gruppen ID',
+  })
+  avm_id?: string | null;
 
-  @Column({ nullable: true, comment: 'Temperatur bei aktiver Nutzung' })
+  @Column({ comment: 'Temperatur bei aktiver Nutzung' })
   comfort_temp!: number;
 
-  @Column({ nullable: true, comment: 'Temperatur im Standby' })
+  @Column({ comment: 'Temperatur im Standby' })
   empty_temp!: number;
 
-  @Column({ nullable: true, comment: 'Vorlaufzeit' })
+  @Column({ comment: 'Vorlaufzeit' })
   prelim_time!: number;
 
-  @Column({ nullable: true, comment: 'Ist aktuell beheizt?' })
+  @Column({ comment: 'Ist aktuell beheizt?', default: false })
   heated!: boolean;
 
-  @Column({ nullable: true, comment: 'Farbcode für den Kalender' })
+  @Column({ comment: 'Farbcode für den Kalender' })
   color!: string;
 
-  @Column({ nullable: true, comment: 'Im Kalender ausblenden?' })
+  @Column({
+    comment: 'Im Kalender ausblenden?',
+    default: false,
+  })
   hidden!: boolean;
 
   @Column()

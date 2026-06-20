@@ -24,23 +24,23 @@ export class CalendarEvent {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true, comment: 'Startzeitpunkt' })
+  @Column({ comment: 'Startzeitpunkt', type: 'datetime' })
   start!: Date;
 
-  @Column({ nullable: true, comment: 'Endzeitpunkt' })
+  @Column({ comment: 'Endzeitpunkt', type: 'datetime' })
   end!: Date;
 
-  @Column({ nullable: true, comment: 'Ist es ein Ganztagsevent?' })
+  @Column({ comment: 'Ist es ein Ganztagsevent?', default: false })
   allDay!: boolean;
 
-  @Column({ nullable: true, comment: 'Titel' })
+  @Column({ comment: 'Titel' })
   title!: string;
 
-  @Column({ nullable: true, comment: 'Beschreibung' })
-  description!: string;
+  @Column({ comment: 'Beschreibung' })
+  description?: string;
 
-  @Column({ nullable: true, comment: 'Feiertag oder Ferien?' })
-  isBackground!: boolean;
+  @Column({ comment: 'Feiertag oder Ferien?', default: false })
+  isBackground?: boolean;
 
   /*
    * Referenz auf die Serie
@@ -65,30 +65,36 @@ export class CalendarEvent {
   })
   isModified!: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({
+    type: 'datetime',
+  })
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({
+    type: 'datetime',
+  })
   updatedAt!: Date;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({
+    type: 'datetime',
+  })
   deletedAt!: Date;
 
-  @Column()
+  @Column({ type: 'int' })
   roomid!: number;
 
   @ManyToOne(() => Room)
   @JoinColumn({ name: 'roomid' })
   room!: Room;
 
-  @Column()
+  @Column({ type: 'int' })
   categoryid!: number;
 
   @ManyToOne(() => Category)
   @JoinColumn({ name: 'categoryid' })
   category!: Category;
 
-  @Column()
+  @Column({ type: 'int' })
   createdbyid!: number;
 
   @ManyToOne(() => UserEntity)

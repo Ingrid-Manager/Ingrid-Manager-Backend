@@ -58,7 +58,6 @@ export class CalendarEventsService {
       allDay: dto.allDay,
       description: dto.description,
       isBackground: dto.isBackground,
-      rrule: dto.rrule,
       roomid: dto.roomid,
       categoryid: dto.categoryid,
       createdbyid: user.id,
