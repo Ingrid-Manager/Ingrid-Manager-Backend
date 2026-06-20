@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
 import { CalendarEvent } from '../../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
@@ -20,6 +21,8 @@ export class HolidayReorganizationService {
 
     @InjectRepository(Room)
     private readonly roomRepository: Repository<Room>,
+
+    private readonly configService: ConfigService,
   ) {}
 
   async run(): Promise<void> {
@@ -27,6 +30,9 @@ export class HolidayReorganizationService {
   }
 
   private async importOpenHolidays(): Promise<void> {
+    const subdivision = this.configService.get<string>('ORG_BUNDESLAND', {
+      infer: true,
+    });
     const holidayCategory = await this.categoryRepository.findOne({
       where: {
         title: 'Ferien',
@@ -78,7 +84,7 @@ export class HolidayReorganizationService {
       {
         params: {
           countryIsoCode: 'DE',
-          subdivisionCode: 'DE-NI',
+          subdivisionCode: `DE-${subdivision}`,
           languageIsoCode: 'DE',
           validFrom: today.toISOString().split('T')[0],
           validTo: futureDate.toISOString().split('T')[0],
