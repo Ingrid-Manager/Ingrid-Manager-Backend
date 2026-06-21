@@ -1,6 +1,6 @@
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class CreateRessourceDto {
+export class CreateResourceDto {
   @IsNumber()
   id!: number;
 

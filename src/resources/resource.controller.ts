@@ -12,21 +12,21 @@ import { Roles } from '../roles/roles.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { RoleEnum } from '../roles/roles.enum';
 import { RolesGuard } from '../roles/roles.guard';
-import { RessourceService } from './ressource.service';
-import { CreateRessourceDto } from './application/dto/create-ressource.dto';
-import { UpdateRessourceDto } from './application/dto/update-ressource.dto';
+import { ResourceService } from './resource.service';
+import { CreateResourceDto } from './application/dto/create-resource.dto';
+import { UpdateResourceDto } from './application/dto/update-resource.dto';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
-  path: 'ressource',
+  path: 'resource',
   version: '1',
 })
-export class RessourceController {
-  constructor(private readonly service: RessourceService) {}
+export class ResourceController {
+  constructor(private readonly service: ResourceService) {}
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
   @Post('create')
-  createRessource(@Body() dto: CreateRessourceDto) {
+  createResource(@Body() dto: CreateResourceDto) {
     return this.service.create(dto);
   }
 
@@ -55,7 +55,7 @@ export class RessourceController {
     id: number,
 
     @Body()
-    dto: UpdateRessourceDto,
+    dto: UpdateResourceDto,
   ) {
     return this.service.update(id, dto);
   }

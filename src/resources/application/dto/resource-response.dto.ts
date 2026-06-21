@@ -1,4 +1,4 @@
-export class RessourceResponseDto {
+export class ResourceResponseDto {
   id!: number;
   title!: string;
   color!: string;
