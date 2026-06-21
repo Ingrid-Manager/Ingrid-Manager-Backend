@@ -25,6 +25,7 @@ import { ReorganizationModule } from './reorganization/reorganization.module';
 import { SeriesEventsModule } from './series-events/series-events.module';
 import { SettingsModule } from './settings/settings.module';
 import { ResourceModule } from './resources/resource.module';
+import { ResourceEventsModule } from './resource-events/resource-events.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -79,6 +80,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     SeriesEventsModule,
     SettingsModule,
     ResourceModule,
+    ResourceEventsModule,
   ],
 })
 export class AppModule {}

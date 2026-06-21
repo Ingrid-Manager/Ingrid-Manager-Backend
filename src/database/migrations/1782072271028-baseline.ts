@@ -1,12 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Ressources1781974048412 implements MigrationInterface {
-  name = 'Ressources1781974048412';
+export class Baseline1782072271028 implements MigrationInterface {
+  name = 'Baseline1782072271028';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TABLE \`ressource\` (\`id\` int NOT NULL AUTO_INCREMENT, \`title\` varchar(255) NOT NULL COMMENT 'Bezeichnung der Ressource', \`color\` varchar(255) NOT NULL COMMENT 'Anzeigefarbe im Ressourcenkalender' DEFAULT '#808080', \`manager_email\` varchar(255) NULL COMMENT 'E-Mail Adresse des Verwalters der Ressource', \`inventoryid\` varchar(255) NULL COMMENT 'Inventarnummer der Ressource', PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
-    );
     await queryRunner.query(
       `ALTER TABLE \`user\` DROP FOREIGN KEY \`FK_c28e52f758e7bbc53828db92194\``,
     );
@@ -41,6 +38,9 @@ export class Ressources1781974048412 implements MigrationInterface {
       `ALTER TABLE \`user\` CHANGE \`statusId\` \`statusId\` int NULL`,
     );
     await queryRunner.query(
+      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
+    );
+    await queryRunner.query(
       `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID'`,
     );
     await queryRunner.query(
@@ -65,7 +65,13 @@ export class Ressources1781974048412 implements MigrationInterface {
       `ALTER TABLE \`seriesevent\` CHANGE \`lastReorganizationAt\` \`lastReorganizationAt\` datetime NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
+      `ALTER TABLE \`resource\` CHANGE \`manager_email\` \`manager_email\` varchar(255) NULL COMMENT 'E-Mail Adresse des Verwalters der Resource'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`resource\` CHANGE \`inventoryid\` \`inventoryid\` varchar(255) NULL COMMENT 'Inventarnummer der Resource'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`resourceevent\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`user\` ADD CONSTRAINT \`FK_c28e52f758e7bbc53828db92194\` FOREIGN KEY (\`roleId\`) REFERENCES \`role\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -89,7 +95,13 @@ export class Ressources1781974048412 implements MigrationInterface {
       `ALTER TABLE \`user\` DROP FOREIGN KEY \`FK_c28e52f758e7bbc53828db92194\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
+      `ALTER TABLE \`resourceevent\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`resource\` CHANGE \`inventoryid\` \`inventoryid\` varchar(255) NULL COMMENT 'Inventarnummer der Resource' DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`resource\` CHANGE \`manager_email\` \`manager_email\` varchar(255) NULL COMMENT 'E-Mail Adresse des Verwalters der Resource' DEFAULT 'NULL'`,
     );
     await queryRunner.query(
       `ALTER TABLE \`seriesevent\` CHANGE \`lastReorganizationAt\` \`lastReorganizationAt\` datetime NULL DEFAULT 'NULL'`,
@@ -114,6 +126,9 @@ export class Ressources1781974048412 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID' DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
     );
     await queryRunner.query(
       `ALTER TABLE \`user\` CHANGE \`statusId\` \`statusId\` int NULL DEFAULT 'NULL'`,
@@ -148,6 +163,5 @@ export class Ressources1781974048412 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`user\` ADD CONSTRAINT \`FK_c28e52f758e7bbc53828db92194\` FOREIGN KEY (\`roleId\`) REFERENCES \`role\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
-    await queryRunner.query(`DROP TABLE \`ressource\``);
   }
 }
