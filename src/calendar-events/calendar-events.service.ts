@@ -13,6 +13,7 @@ import { CalnedarEventMapper } from './application/mappers/calendar-event.mapper
 import { RoleEnum } from '../roles/roles.enum';
 import { UpdateCalendarEventDto } from './application/dto/update-calendar-event.dto';
 import { CreateCalendarEventDto } from './application/dto/create-calendar-event.dto';
+import { HeatingCalendarEventsDto } from './application/dto/heating-calendar-events.dto';
 
 @Injectable()
 export class CalendarEventsService {
@@ -158,5 +159,50 @@ export class CalendarEventsService {
 
     await this.repo.softDelete(id);
     return { success: true };
+  }
+
+  async getHeatingEvents(
+    roomId: number,
+    now: Date,
+  ): Promise<HeatingCalendarEventsDto> {
+    const from = new Date(now);
+    from.setHours(0, 0, 0, 0);
+
+    const events = await this.repo
+      .createQueryBuilder('event')
+      .where('event.roomid = :roomId', { roomId })
+      .andWhere('event.isBackground = false')
+      .andWhere('event.deletedAt IS NULL')
+      .andWhere('event.end >= :from', { from })
+      .orderBy('event.start', 'ASC')
+      .getMany();
+
+    const result = new HeatingCalendarEventsDto();
+
+    for (const event of events) {
+      /*
+       * Termin läuft aktuell
+       */
+      if (event.start <= now && event.end >= now) {
+        result.runningEvent = event;
+        continue;
+      }
+
+      /*
+       * Nächster Termin
+       */
+      if (!result.nextEvent && event.start > now) {
+        result.nextEvent = event;
+      }
+
+      /*
+       * Zuletzt beendeter Termin
+       */
+      if (event.end < now) {
+        result.previousEvent = event;
+      }
+    }
+
+    return result;
   }
 }
