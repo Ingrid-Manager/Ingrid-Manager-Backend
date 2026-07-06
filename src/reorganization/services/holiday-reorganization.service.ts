@@ -33,9 +33,10 @@ export class HolidayReorganizationService {
     const subdivision = this.configService.get<string>('ORG_BUNDESLAND', {
       infer: true,
     });
+
     const holidayCategory = await this.categoryRepository.findOne({
       where: {
-        title: 'Ferien',
+        id: 9999,
       },
     });
 
@@ -45,12 +46,12 @@ export class HolidayReorganizationService {
 
     const holidayRoom = await this.roomRepository.findOne({
       where: {
-        title: 'Dummy',
+        id: 9999,
       },
     });
 
     if (!holidayRoom) {
-      throw new Error('Raum "Dummy" nicht gefunden');
+      throw new Error('Raum "Ferien Dummy" nicht gefunden');
     }
 
     const today = new Date();
