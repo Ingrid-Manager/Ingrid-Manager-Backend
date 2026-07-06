@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { DataSource, DataSourceOptions } from 'typeorm';
 
+const isMysql = process.env.DATABASE_TYPE === 'mysql';
+
 export const AppDataSource = new DataSource({
   type: process.env.DATABASE_TYPE,
   url: process.env.DATABASE_URL,
@@ -17,17 +19,20 @@ export const AppDataSource = new DataSource({
   logging: process.env.NODE_ENV !== 'production',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-  cli: {
-    entitiesDir: 'src',
-
-    subscribersDir: 'subscriber',
-  },
   extra: {
     // based on https://node-postgres.com/api/pool
     // max connection pool size
-    max: process.env.DATABASE_MAX_CONNECTIONS
-      ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
-      : 100,
+    ...(isMysql
+      ? {
+          connectionLimit: process.env.DATABASE_MAX_CONNECTIONS
+            ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
+            : undefined,
+        }
+      : {
+          max: process.env.DATABASE_MAX_CONNECTIONS
+            ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
+            : undefined,
+        }),
     ssl:
       process.env.DATABASE_SSL_ENABLED === 'true'
         ? {

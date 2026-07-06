@@ -8,6 +8,9 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
   constructor(private configService: ConfigService<AllConfigType>) {}
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
+    const isMysql =
+      this.configService.get('database.type', { infer: true }) === 'mysql';
+
     return {
       type: this.configService.get('database.type', { infer: true }),
       url: this.configService.get('database.url', { infer: true }),
@@ -33,7 +36,19 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
       extra: {
         // based on https://node-postgres.com/apis/pool
         // max connection pool size
-        max: this.configService.get('database.maxConnections', { infer: true }),
+        ...(isMysql
+          ? {
+              connectionLimit: this.configService.get(
+                'database.maxConnections',
+                { infer: true },
+              ),
+            }
+          : {
+              max: this.configService.get('database.maxConnections', {
+                infer: true,
+              }),
+            }),
+
         ssl: this.configService.get('database.sslEnabled', { infer: true })
           ? {
               rejectUnauthorized: this.configService.get(
