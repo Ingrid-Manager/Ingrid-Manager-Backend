@@ -23,7 +23,7 @@ import { CreateResourceEventDto } from './application/dto/create-resource-event.
 import { UpdateResourceEventDto } from './application/dto/update-resource-event.dto';
 import { ResourceEventFilterDto } from './application/dto/resource-event-filter.dto';
 
-@Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
+@Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user, RoleEnum.guest)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
   path: 'resource-events',
@@ -32,6 +32,7 @@ import { ResourceEventFilterDto } from './application/dto/resource-event-filter.
 export class ResourceEventsController {
   constructor(private readonly service: ResourceEventsService) {}
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Post()
   create(@Body() dto: CreateResourceEventDto, @Req() req) {
     return this.service.create(dto, req.user);
@@ -42,6 +43,7 @@ export class ResourceEventsController {
     return this.service.findInRange(query);
   }
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Patch()
   update(
     @Body(new ValidationPipe())
@@ -51,6 +53,7 @@ export class ResourceEventsController {
     return this.service.update(dto, req.user);
   }
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Delete(':id')
   delete(
     @Param('id', ParseIntPipe)

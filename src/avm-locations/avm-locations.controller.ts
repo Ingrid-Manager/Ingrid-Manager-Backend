@@ -16,7 +16,7 @@ import { CreateAvmLocationDto } from './infrastructure/application/dto/create-av
 import { UpdateAvmLocationDto } from './infrastructure/application/dto/update-avm-location.dto';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(RoleEnum.admin)
+@Roles(RoleEnum.admin, RoleEnum.verwaltung)
 @Controller({
   path: 'avm-locations',
   version: '1',

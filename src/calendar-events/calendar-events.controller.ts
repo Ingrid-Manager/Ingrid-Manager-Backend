@@ -19,7 +19,7 @@ import { RoleEnum } from '../roles/roles.enum';
 import { RolesGuard } from '../roles/roles.guard';
 import { CreateCalendarEventDto } from './application/dto/create-calendar-event.dto';
 
-@Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
+@Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user, RoleEnum.guest)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
   path: 'calendar-events',
@@ -28,6 +28,7 @@ import { CreateCalendarEventDto } from './application/dto/create-calendar-event.
 export class CalendarEventsController {
   constructor(private readonly service: CalendarEventsService) {}
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Post()
   create(@Body() dto: CreateCalendarEventDto, @Req() req) {
     return this.service.create(dto, req.user);
@@ -38,6 +39,7 @@ export class CalendarEventsController {
     return this.service.findInRange(query);
   }
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Patch()
   update(
     @Body(new ValidationPipe())
@@ -47,17 +49,9 @@ export class CalendarEventsController {
     return this.service.update(dto, req.user);
   }
 
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number, @Req() req) {
     return this.service.delete(id, req.user);
   }
-
-  /*@Delete()
-  delete(
-    @Body(new ValidationPipe())
-    dto: DeleteCalendarEventDto,
-    @Req() req,
-  ) {
-    return this.service.delete(dto.id, req.user);
-  } */
 }
