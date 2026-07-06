@@ -1,0 +1,1 @@
+export const AVM_AHA_OPTIONS = 'AVM_AHA_OPTIONS';

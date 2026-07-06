@@ -1,0 +1,11 @@
+export enum DeviceFunction {
+  HANFUN_UNIT = 1,
+  LIGHT = 2,
+  ALARM = 16,
+  BUTTON = 32,
+  THERMOSTAT = 64,
+  POWERMETER = 128,
+  TEMPERATURE = 256,
+  SWITCH = 512,
+  DECT_REPEATER = 1024,
+}
