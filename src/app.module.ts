@@ -26,6 +26,8 @@ import { SeriesEventsModule } from './series-events/series-events.module';
 import { SettingsModule } from './settings/settings.module';
 import { ResourceModule } from './resources/resource.module';
 import { ResourceEventsModule } from './resource-events/resource-events.module';
+//import { AvmTestModule } from './avm-test/avm-test.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -65,6 +67,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
     }),
+    //AvmTestModule,
     UsersModule,
     AuthModule,
     SessionModule,
@@ -81,6 +84,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     SettingsModule,
     ResourceModule,
     ResourceEventsModule,
+    CryptoModule,
   ],
 })
 export class AppModule {}

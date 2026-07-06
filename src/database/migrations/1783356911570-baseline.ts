@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Baseline1782072271028 implements MigrationInterface {
-  name = 'Baseline1782072271028';
+export class Baseline1783356911570 implements MigrationInterface {
+  name = 'Baseline1783356911570';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -38,10 +38,10 @@ export class Baseline1782072271028 implements MigrationInterface {
       `ALTER TABLE \`user\` CHANGE \`statusId\` \`statusId\` int NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
+      `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID'`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID'`,
+      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE \`category\` CHANGE \`title\` \`title\` varchar(255) NULL COMMENT 'Bezeichnung der Kategorie'`,
@@ -74,6 +74,24 @@ export class Baseline1782072271028 implements MigrationInterface {
       `ALTER TABLE \`resourceevent\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL`,
     );
     await queryRunner.query(
+      `ALTER TABLE \`heating_log\` CHANGE \`appointmentid\` \`appointmentid\` int NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` DROP COLUMN \`context\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` ADD \`context\` json NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` CHANGE \`message\` \`message\` text NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_state\` CHANGE \`appointmentid\` \`appointmentid\` int NULL COMMENT 'Aktiver Kalendereintrag'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_state\` CHANGE \`lastExecution\` \`lastExecution\` datetime NULL COMMENT 'Zeitpunkt der letzten erfolgreichen AVM-Kommunikation'`,
+    );
+    await queryRunner.query(
       `ALTER TABLE \`user\` ADD CONSTRAINT \`FK_c28e52f758e7bbc53828db92194\` FOREIGN KEY (\`roleId\`) REFERENCES \`role\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
@@ -93,6 +111,24 @@ export class Baseline1782072271028 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE \`user\` DROP FOREIGN KEY \`FK_c28e52f758e7bbc53828db92194\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_state\` CHANGE \`lastExecution\` \`lastExecution\` datetime NULL COMMENT 'Zeitpunkt der letzten erfolgreichen AVM-Kommunikation' DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_state\` CHANGE \`appointmentid\` \`appointmentid\` int NULL COMMENT 'Aktiver Kalendereintrag' DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` CHANGE \`message\` \`message\` text NULL DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` DROP COLUMN \`context\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` ADD \`context\` longtext COLLATE "utf8mb4_bin" NULL DEFAULT 'NULL'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`heating_log\` CHANGE \`appointmentid\` \`appointmentid\` int NULL DEFAULT 'NULL'`,
     );
     await queryRunner.query(
       `ALTER TABLE \`resourceevent\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
@@ -125,10 +161,10 @@ export class Baseline1782072271028 implements MigrationInterface {
       `ALTER TABLE \`category\` CHANGE \`title\` \`title\` varchar(255) NULL COMMENT 'Bezeichnung der Kategorie' DEFAULT 'NULL'`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID' DEFAULT 'NULL'`,
+      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`session\` CHANGE \`deletedAt\` \`deletedAt\` datetime(6) NULL DEFAULT 'NULL'`,
+      `ALTER TABLE \`room\` CHANGE \`avm_id\` \`avm_id\` varchar(255) NULL COMMENT 'AVM Geräte oder Gruppen ID' DEFAULT 'NULL'`,
     );
     await queryRunner.query(
       `ALTER TABLE \`user\` CHANGE \`statusId\` \`statusId\` int NULL DEFAULT 'NULL'`,
