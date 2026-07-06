@@ -72,7 +72,7 @@ export class HolidayReorganizationService {
       {
         params: {
           countryIsoCode: 'DE',
-          subdivisionCode: 'DE-NI',
+          subdivisionCode: `DE-${subdivision}`,
           languageIsoCode: 'DE',
           validFrom: today.toISOString().split('T')[0],
           validTo: futureDate.toISOString().split('T')[0],
