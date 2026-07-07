@@ -66,5 +66,9 @@ export default registerAs<AppConfig>('app', () => {
     apiPrefix: process.env.API_PREFIX || 'api',
     fallbackLanguage: process.env.APP_FALLBACK_LANGUAGE || 'en',
     headerLanguage: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
+    logoURL:
+      process.env.APP_LOGOURL || 'https://ingrid-manager.de/media/logo.png',
+    iconURL:
+      process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
   };
 });

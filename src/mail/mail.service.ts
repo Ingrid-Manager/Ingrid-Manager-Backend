@@ -17,17 +17,22 @@ export class MailService {
 
   async userSignUp(mailData: MailData<{ hash: string }>): Promise<void> {
     const i18n = I18nContext.current();
+    console.log('DEBUG Language: ' + I18nContext.current()?.lang);
     let emailConfirmTitle: MaybeType<string>;
     let text1: MaybeType<string>;
     let text2: MaybeType<string>;
     let text3: MaybeType<string>;
 
+    const translationArgs = {
+      ORG_NAME: this.configService.get<string>('ORG_NAME', { infer: true }),
+    };
+
     if (i18n) {
       [emailConfirmTitle, text1, text2, text3] = await Promise.all([
         i18n.t('common.confirmEmail'),
-        i18n.t('confirm-email.text1'),
-        i18n.t('confirm-email.text2'),
-        i18n.t('confirm-email.text3'),
+        i18n.t('confirm-email.text1', { args: translationArgs }),
+        i18n.t('confirm-email.text2', { args: translationArgs }),
+        i18n.t('confirm-email.text3', { args: translationArgs }),
       ]);
     }
 
@@ -55,7 +60,14 @@ export class MailService {
         title: emailConfirmTitle,
         url: url.toString(),
         actionTitle: emailConfirmTitle,
+        userName: mailData.userName ?? '',
         app_name: this.configService.get('app.name', { infer: true }),
+        logoUrl: this.configService.getOrThrow('app.logoURL', { infer: true }),
+        iconUrl: this.configService.getOrThrow('app.iconURL', { infer: true }),
+        frontendUrl: this.configService.getOrThrow('app.frontendDomain', {
+          infer: true,
+        }),
+        org_name: this.configService.get<string>('ORG_NAME', { infer: true }),
         text1,
         text2,
         text3,
@@ -67,19 +79,24 @@ export class MailService {
     mailData: MailData<{ hash: string; tokenExpires: number }>,
   ): Promise<void> {
     const i18n = I18nContext.current();
+    console.log('DEBUG Language: ' + I18nContext.current()?.lang);
     let resetPasswordTitle: MaybeType<string>;
     let text1: MaybeType<string>;
     let text2: MaybeType<string>;
     let text3: MaybeType<string>;
     let text4: MaybeType<string>;
 
+    const translationArgs = {
+      ORG_NAME: this.configService.get<string>('ORG_NAME', { infer: true }),
+    };
+
     if (i18n) {
       [resetPasswordTitle, text1, text2, text3, text4] = await Promise.all([
         i18n.t('common.resetPassword'),
-        i18n.t('reset-password.text1'),
-        i18n.t('reset-password.text2'),
-        i18n.t('reset-password.text3'),
-        i18n.t('reset-password.text4'),
+        i18n.t('reset-password.text1', { args: translationArgs }),
+        i18n.t('reset-password.text2', { args: translationArgs }),
+        i18n.t('reset-password.text3', { args: translationArgs }),
+        i18n.t('reset-password.text4', { args: translationArgs }),
       ]);
     }
 
@@ -108,61 +125,18 @@ export class MailService {
         title: resetPasswordTitle,
         url: url.toString(),
         actionTitle: resetPasswordTitle,
-        app_name: this.configService.get('app.name', {
+        userName: mailData.userName ?? '',
+        app_name: this.configService.get('app.name', { infer: true }),
+        logoUrl: this.configService.getOrThrow('app.logoURL', { infer: true }),
+        iconUrl: this.configService.getOrThrow('app.iconURL', { infer: true }),
+        frontendUrl: this.configService.getOrThrow('app.frontendDomain', {
           infer: true,
         }),
+        org_name: this.configService.get<string>('ORG_NAME', { infer: true }),
         text1,
         text2,
         text3,
         text4,
-      },
-    });
-  }
-
-  async confirmNewEmail(mailData: MailData<{ hash: string }>): Promise<void> {
-    const i18n = I18nContext.current();
-    let emailConfirmTitle: MaybeType<string>;
-    let text1: MaybeType<string>;
-    let text2: MaybeType<string>;
-    let text3: MaybeType<string>;
-
-    if (i18n) {
-      [emailConfirmTitle, text1, text2, text3] = await Promise.all([
-        i18n.t('common.confirmEmail'),
-        i18n.t('confirm-new-email.text1'),
-        i18n.t('confirm-new-email.text2'),
-        i18n.t('confirm-new-email.text3'),
-      ]);
-    }
-
-    const url = new URL(
-      this.configService.getOrThrow('app.frontendDomain', {
-        infer: true,
-      }) + '/confirm-new-email',
-    );
-    url.searchParams.set('hash', mailData.data.hash);
-
-    await this.mailerService.sendMail({
-      to: mailData.to,
-      subject: emailConfirmTitle,
-      text: `${url.toString()} ${emailConfirmTitle}`,
-      templatePath: path.join(
-        this.configService.getOrThrow('app.workingDirectory', {
-          infer: true,
-        }),
-        'src',
-        'mail',
-        'mail-templates',
-        'confirm-new-email.hbs',
-      ),
-      context: {
-        title: emailConfirmTitle,
-        url: url.toString(),
-        actionTitle: emailConfirmTitle,
-        app_name: this.configService.get('app.name', { infer: true }),
-        text1,
-        text2,
-        text3,
       },
     });
   }

@@ -1,5 +1,5 @@
 {
-  "text1": "Hallo,",
-  "text2": "wilkommen bei dem",
-  "text3": "Bitte bestätigen Sie Ihre E-Mail-Adresse mit einem Klick auf den grünen Button."
+  "text1": "wilkommen bei dem {ORG_NAME} Ingrid Manager",
+  "text2": "Bitte bestätige deine E-Mail-Adresse mit einem Klick auf den Button. Im Anschluss muss dein Account durch die Verwaltung freigeben werden.",
+  "text3": "Vielen Dank,"
 }

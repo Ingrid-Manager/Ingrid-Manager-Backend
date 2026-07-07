@@ -140,6 +140,7 @@ export class AuthService {
       data: {
         hash,
       },
+      userName: user.firstName,
     });
   }
 
@@ -182,46 +183,6 @@ export class AuthService {
     await this.usersService.update(user.id, user);
   }
 
-  async confirmNewEmail(hash: string): Promise<void> {
-    let userId: User['id'];
-    let newEmail: User['email'];
-
-    try {
-      const jwtData = await this.jwtService.verifyAsync<{
-        confirmEmailUserId: User['id'];
-        newEmail: User['email'];
-      }>(hash, {
-        secret: this.authConfiguration.confirmEmailSecret,
-      });
-
-      userId = jwtData.confirmEmailUserId;
-      newEmail = jwtData.newEmail;
-    } catch {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
-      });
-    }
-
-    const user = await this.usersService.findById(userId);
-
-    if (!user) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: `notFound`,
-      });
-    }
-
-    user.email = newEmail;
-    user.status = {
-      id: StatusEnum.pending,
-    };
-
-    await this.usersService.update(user.id, user);
-  }
-
   async forgotPassword(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
 
@@ -254,6 +215,7 @@ export class AuthService {
         hash,
         tokenExpires,
       },
+      userName: user.firstName,
     });
   }
 
@@ -366,24 +328,6 @@ export class AuthService {
           },
         });
       }
-
-      const hash = await this.jwtService.signAsync(
-        {
-          confirmEmailUserId: currentUser.id,
-          newEmail: userDto.email,
-        },
-        {
-          secret: this.authConfiguration.confirmEmailSecret,
-          expiresIn: this.authConfiguration.confirmEmailExpires,
-        },
-      );
-
-      await this.mailService.confirmNewEmail({
-        to: userDto.email,
-        data: {
-          hash,
-        },
-      });
     }
 
     delete userDto.email;
