@@ -14,6 +14,7 @@ export class CalnedarEventMapper {
       color: entity.room?.color ?? '#ff0000',
       room_id: entity.room?.id,
       room_title: entity.room?.title,
+      categoryid: entity.categoryid,
       user_id: entity.user.id,
       user_name: entity.user.firstName + ' ' + entity.user.lastName,
       seriesid: entity.seriesid,

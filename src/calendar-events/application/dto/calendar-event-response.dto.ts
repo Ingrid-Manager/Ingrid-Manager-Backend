@@ -8,6 +8,7 @@ export class CalendarEventResponseDto {
   color?: string;
   room_title?: string;
   room_id?: number;
+  categoryid?: number;
   user_id?: number;
   user_name?: string;
   isBackground?: boolean;
