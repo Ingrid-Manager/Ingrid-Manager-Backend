@@ -70,4 +70,8 @@ export class RoomsService {
     Object.assign(room, dto);
     return this.repo.save(room);
   }
+
+  async remove(id: Room['id']) {
+    await this.repo.softDelete(id);
+  }
 }

@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -15,6 +18,8 @@ import { RolesGuard } from '../roles/roles.guard';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './application/dto/create-room.dto';
 import { UpdateRoomDto } from './application/dto/update-room.dto';
+import { ApiParam } from '@nestjs/swagger';
+import { Room } from './infrastructure/relational/persistence/entities/room.entity';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
@@ -58,5 +63,17 @@ export class RoomsController {
     dto: UpdateRoomDto,
   ) {
     return this.service.update(id, dto);
+  }
+
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung)
+  @Delete(':id')
+  @ApiParam({
+    name: 'id',
+    type: String,
+    required: true,
+  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id') id: Room['id']): Promise<void> {
+    return this.service.remove(id);
   }
 }

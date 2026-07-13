@@ -1,11 +1,15 @@
 import {
   Column,
+  CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { AvmLocation } from '../../../../../avm-locations/infrastructure/relational/persistence/entities/avm-location.entity';
+import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
 
 @Entity('room')
 export class Room {
@@ -49,4 +53,30 @@ export class Room {
   @ManyToOne(() => AvmLocation)
   @JoinColumn({ name: 'locationid' })
   location!: AvmLocation;
+
+  @CreateDateColumn({
+    type: 'datetime',
+    precision: 6,
+  })
+  createdAt?: Date;
+
+  @UpdateDateColumn({
+    type: 'datetime',
+    precision: 6,
+  })
+  updatedAt?: Date;
+
+  @DeleteDateColumn({
+    type: 'datetime',
+    precision: 6,
+    nullable: true,
+  })
+  deletedAt?: Date;
+
+  @Column({ type: 'int' })
+  createdbyid!: number;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'createdbyid' })
+  user!: UserEntity;
 }
