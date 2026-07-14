@@ -127,7 +127,11 @@ export class SeriesEventsService {
       await manager.save(series);
 
       /*
-       * Zukünftige nicht bearbeitete Termine löschen
+       * Alle zukünftigen Termine der bisherigen Serie löschen.
+       *
+       * Laut Fachvorgabe werden beim Split sämtliche manuellen Änderungen
+       * (verschoben, geändert oder gelöscht) verworfen und die Zukunft
+       * vollständig neu erzeugt.
        */
       await manager
         .createQueryBuilder()
@@ -139,7 +143,6 @@ export class SeriesEventsService {
         .andWhere('start >= :splitDate', {
           splitDate,
         })
-        .andWhere('isModified = false')
         .execute();
 
       /*
