@@ -19,4 +19,10 @@ export class SettingsController {
   getSettings(): SettingsDto {
     return this.settingsService.getSettings();
   }
+
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user, RoleEnum.guest)
+  @Get('version')
+  getVersion(): { version: string } {
+    return this.settingsService.getVersion();
+  }
 }

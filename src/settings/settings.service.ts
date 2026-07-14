@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsDto } from './dto/settings.dto';
+import packageJSON from '../../package.json';
 
 @Injectable()
 export class SettingsService {
@@ -25,5 +26,9 @@ export class SettingsService {
       }),
       techEmail: this.configService.get<string>('TECH_EMAIL', { infer: true }),
     };
+  }
+
+  getVersion(): { version: string } {
+    return { version: packageJSON.version };
   }
 }
