@@ -25,7 +25,7 @@ export class ResourceEventsService {
   ) {}
 
   private validateDateRange(start: string | Date, end: string | Date): void {
-    if (new Date(start) >= new Date(end)) {
+    if (new Date(start) > new Date(end)) {
       throw new ConflictException(
         'Der Startzeitpunkt muss vor dem Endzeitpunkt liegen.',
       );
