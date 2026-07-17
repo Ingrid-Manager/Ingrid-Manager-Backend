@@ -14,9 +14,12 @@ export class RoomsService {
     private repo: Repository<Room>,
   ) {}
 
-  async create(dto: CreateRoomDto) {
-    const event = this.repo.create(dto);
-    return this.repo.save(event);
+  async create(dto: CreateRoomDto, user: any) {
+    const room = this.repo.create({
+      ...dto,
+      createdbyid: user.id,
+    });
+    return this.repo.save(room);
   }
 
   async findOne(id: number) {

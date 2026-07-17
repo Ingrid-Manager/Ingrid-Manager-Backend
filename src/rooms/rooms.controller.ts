@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../roles/roles.decorator';
@@ -31,8 +32,8 @@ export class RoomsController {
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
   @Post('create')
-  createRoom(@Body() dto: CreateRoomDto) {
-    return this.service.create(dto);
+  createRoom(@Body() dto: CreateRoomDto, @Req() req) {
+    return this.service.create(dto, req.user);
   }
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
