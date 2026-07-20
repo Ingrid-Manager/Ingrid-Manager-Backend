@@ -8,6 +8,19 @@ import { SeriesEvent } from '../infrastructure/relational/persistence/entities/s
 import { OverlapService } from './overlap.service';
 import { HolidayService } from './holiday.service';
 
+export interface SeriesConflictEvent {
+  id: number;
+  title: string;
+  start: Date;
+  end: Date;
+}
+
+export interface SeriesConflict {
+  start: Date;
+  end: Date;
+  conflictingEvents: SeriesConflictEvent[];
+}
+
 @Injectable()
 export class SeriesGeneratorService {
   constructor(
@@ -49,6 +62,78 @@ export class SeriesGeneratorService {
       matchingFrequency,
       matchingWeekdays,
     });
+  }
+
+  /*
+   * Simuliert dieselbe Terminreihe wie generateRange, schreibt aber
+   * nichts in die Datenbank. Stattdessen werden alle Tage, an denen
+   * ein Raumkonflikt bestehen würde, inkl. der konkret kollidierenden
+   * Termine gesammelt und zurückgegeben.
+   *
+   * excludeSeriesId: Termine dieser Serie zählen nicht als Konflikt,
+   * da sie im selben Vorgang gelöscht und ersetzt werden.
+   */
+  async checkRangeConflicts(
+    manager: EntityManager,
+    series: SeriesEvent,
+    from: Date,
+    until: Date,
+    excludeSeriesId?: number,
+  ): Promise<SeriesConflict[]> {
+    const conflicts: SeriesConflict[] = [];
+    const current = new Date(from);
+
+    while (current <= until && current <= series.seriesEnd) {
+      const weekday = current.getDay();
+      const mappedWeekday = weekday === 0 ? 7 : weekday;
+
+      if (!this.matchesFrequency(series, current)) {
+        current.setDate(current.getDate() + 1);
+        continue;
+      }
+
+      if (series.weekdays.includes(mappedWeekday)) {
+        const start = new Date(current);
+        const end = new Date(current);
+
+        this.applyTime(start, series.startTime);
+        this.applyTime(end, series.endTime);
+
+        if (!series.runDuringSchoolHolidays) {
+          const isHoliday = await this.holidayService.isSchoolHoliday(start);
+
+          if (isHoliday) {
+            current.setDate(current.getDate() + 1);
+            continue;
+          }
+        }
+
+        const overlaps = await this.overlapService.findOverlaps(
+          manager,
+          series.roomid,
+          start,
+          end,
+          excludeSeriesId,
+        );
+
+        if (overlaps.length > 0) {
+          conflicts.push({
+            start,
+            end,
+            conflictingEvents: overlaps.map((e) => ({
+              id: e.id,
+              title: e.title,
+              start: e.start,
+              end: e.end,
+            })),
+          });
+        }
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    return conflicts;
   }
 
   private async createOccurrence(

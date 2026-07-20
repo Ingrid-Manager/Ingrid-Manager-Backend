@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -118,6 +118,44 @@ export class SeriesEventsService {
     });*/
     const generateUntil = new Date(splitDate);
     generateUntil.setFullYear(generateUntil.getFullYear() + 2);
+
+    /*
+     * Vorab-Prüfung (Dry-Run): Bevor irgendetwas gelöscht wird, prüfen,
+     * ob die neu zu erzeugenden Termine mit bestehenden Terminen im
+     * Raum kollidieren würden. Termine der bisherigen Serie selbst
+     * zählen dabei nicht als Konflikt, da sie ohnehin ersetzt werden.
+     */
+    const conflicts = await this.generator.checkRangeConflicts(
+      this.repo.manager,
+      newSeries,
+      splitDate,
+      generateUntil,
+      series.id,
+    );
+
+    if (conflicts.length > 0) {
+      const MAX_DETAILS = 5;
+
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        message:
+          conflicts.length === 1
+            ? 'Der Termin kann nicht angelegt werden, da ein Konflikt mit einem bestehenden Termin im Raum besteht.'
+            : `Der Termin kann nicht angelegt werden, da ${conflicts.length} Konflikte mit bestehenden Terminen im Raum bestehen.`,
+        totalConflicts: conflicts.length,
+        conflicts: conflicts.slice(0, MAX_DETAILS).map((c) => ({
+          start: c.start,
+          end: c.end,
+          conflictingEvents: c.conflictingEvents.map((e) => ({
+            id: e.id,
+            title: e.title,
+            start: e.start,
+            end: e.end,
+          })),
+        })),
+      });
+    }
 
     await this.repo.manager.transaction(async (manager) => {
       /*
