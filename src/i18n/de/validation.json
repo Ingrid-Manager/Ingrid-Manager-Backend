@@ -1,5 +1,5 @@
 {
-    "isEmail": "Bitte geben Sie ein gültige E-Mail Adresse ein!",
+    "isEmail": "Bitte geben Sie eine gültige E-Mail Adresse ein!",
     "isNotEmpty": "Dieses Feld darf nicht leer sein!",
     "errors": {
         "userNotFound": "E-Mail Adresse oder Passwort falsch!",
