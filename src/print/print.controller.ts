@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Logger, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../roles/roles.decorator';
@@ -24,6 +24,8 @@ import { PrintCalendarDto } from './dto/print-calendar.dto';
   version: '1',
 })
 export class PrintController {
+  private readonly logger = new Logger(PrintController.name);
+
   constructor(private readonly printService: PrintService) {}
 
   /**
@@ -35,7 +37,31 @@ export class PrintController {
     @Body() dto: PrintCalendarDto,
     @Res() res: Response,
   ): Promise<void> {
-    const pdf = await this.printService.generateCalendarPdf(dto);
+    let pdf: Buffer;
+
+    try {
+      pdf = await this.printService.generateCalendarPdf(dto);
+    } catch (err: any) {
+      // ── TEMPORÄR FÜR DEBUGGING ──────────────────────────────────────────
+      // Gibt den echten Fehler (statt eines generischen "Internal server
+      // error") direkt in der HTTP-Antwort zurück, damit er im Network-Tab
+      // der Browser-Konsole sichtbar ist — nützlich, wenn kein Zugriff auf
+      // die Server-Logs besteht. NACH dem Debugging bitte wieder entfernen
+      // (Stacktraces sollten nicht dauerhaft an den Client gehen).
+      this.logger.error('Fehler bei der PDF-Erzeugung', err?.stack);
+
+      res.status(500).json({
+        statusCode: 500,
+        message: 'Fehler bei der PDF-Erzeugung (Debug-Modus)',
+        error: err?.message ?? String(err),
+        name: err?.name,
+        stack:
+          typeof err?.stack === 'string'
+            ? err.stack.split('\n').slice(0, 15)
+            : undefined,
+      });
+      return;
+    }
 
     // Defense-in-depth für den Dateinamen im Content-Disposition-Header:
     // dto.date/dto.type sind zwar bereits über class-validator strikt
