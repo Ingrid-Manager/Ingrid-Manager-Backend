@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import puppeteer, { Browser } from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 export interface PdfRenderOptions {
   landscape?: boolean;
@@ -8,6 +9,18 @@ export interface PdfRenderOptions {
 
 /**
  * Kapselt den Headless-Chromium-Zugriff über Puppeteer.
+ *
+ * Nutzt ausschließlich @sparticuz/chromium (kein optionaler Fallback-Pfad
+ * auf ein anderes/lokal installiertes Chromium) — ein eigentlich für
+ * AWS Lambda gebautes, selbstenthaltenes Chromium-Bundle, das die auf
+ * schlanken Linux-Hosting-Umgebungen ohne Root-Zugriff häufig fehlenden
+ * Systembibliotheken (z. B. libnspr4.so, libnss3.so) selbst mitbringt,
+ * statt sie vom Betriebssystem vorauszusetzen.
+ *
+ * WICHTIG: Die enthaltene Chromium-Binary ist Linux-only. Dieser Service
+ * lässt sich damit nur auf einem Linux-Zielsystem tatsächlich ausführen
+ * (z. B. dem Produktionsserver), nicht direkt auf einer lokalen
+ * Windows-Entwicklungsumgebung.
  *
  * Der Browser wird beim ersten Aufruf einmalig gestartet und danach
  * für alle weiteren PDF-Generierungen wiederverwendet, da das Starten
@@ -20,23 +33,22 @@ export class PdfRendererService implements OnModuleDestroy {
   private readonly logger = new Logger(PdfRendererService.name);
   private browserPromise: Promise<Browser> | null = null;
 
+  private async launchBrowser(): Promise<Browser> {
+    return puppeteer.launch({
+      headless: true,
+      executablePath: await chromium.executablePath(),
+      args: chromium.args,
+      defaultViewport: null,
+    });
+  }
+
   private async getBrowser(): Promise<Browser> {
     if (!this.browserPromise) {
-      this.browserPromise = puppeteer
-        .launch({
-          headless: true,
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-          ],
-        })
-        .catch((err) => {
-          // Bei Fehlschlag darf die nächste Anfrage einen neuen Versuch starten
-          this.browserPromise = null;
-          throw err;
-        });
+      this.browserPromise = this.launchBrowser().catch((err) => {
+        // Bei Fehlschlag darf die nächste Anfrage einen neuen Versuch starten
+        this.browserPromise = null;
+        throw err;
+      });
 
       const browser = await this.browserPromise;
       browser.on('disconnected', () => {

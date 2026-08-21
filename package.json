@@ -73,8 +73,9 @@
     "swagger-ui-express": "5.0.1",
     "typeorm": "0.3.30",
     "xml2js": "^0.6.2",
-    "puppeteer": "^25.8.0",
-    "fullcalendar": "^6.1.20"
+    "fullcalendar": "^6.1.20",
+    "@sparticuz/chromium": "^149.0.0",
+    "puppeteer-core": "^25.8.0"
   },
   "devDependencies": {
     "@commitlint/cli": "20.1.0",
