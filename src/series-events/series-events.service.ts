@@ -66,7 +66,7 @@ export class SeriesEventsService {
     return saved;
   }
 
-  async updateFromDate(dto: UpdateSeriesFromDateDto, user: any) {
+  async updateFromDate(dto: UpdateSeriesFromDateDto) {
     const series = await this.repo.findOne({
       where: {
         id: dto.id,
@@ -79,7 +79,7 @@ export class SeriesEventsService {
 
     const splitDate = new Date(dto.splitDate);
 
-    await this.splitSeries(series, splitDate, dto, user);
+    await this.splitSeries(series, splitDate, dto);
 
     return {
       success: true,
@@ -90,7 +90,6 @@ export class SeriesEventsService {
     series: SeriesEvent,
     splitDate: Date,
     dto: UpdateSeriesFromDateDto,
-    user: any,
   ) {
     const oldSeriesEnd = series.seriesEnd;
 
@@ -107,7 +106,7 @@ export class SeriesEventsService {
       weekdays: dto.weekdays ?? series.weekdays,
       runDuringSchoolHolidays:
         dto.runDuringSchoolHolidays ?? series.runDuringSchoolHolidays,
-      createdbyid: user.id,
+      createdbyid: series.createdbyid,
       active: true,
       seriesStart: splitDate,
       seriesEnd: dto.seriesEnd ? new Date(dto.seriesEnd) : oldSeriesEnd,

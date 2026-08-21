@@ -131,7 +131,13 @@ export class CalendarEventsService {
       event.isModified = true;
     }
 
-    Object.assign(event, dto);
+    // Der Ersteller/Owner eines Termins darf beim Bearbeiten nie verändert
+    // werden - selbst wenn er (versehentlich oder böswillig) im Payload
+    // mitgeschickt wird.
+    const updateData: Record<string, unknown> = { ...dto };
+    delete updateData.createdbyid;
+
+    Object.assign(event, updateData);
 
     return this.repo.save(event);
   }

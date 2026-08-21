@@ -68,11 +68,10 @@ export class SeriesEventsController {
     id: number,
     @Body()
     dto: UpdateSeriesFromDateDto,
-    @Req() req,
   ) {
     dto.id = id;
 
-    return this.service.updateFromDate(dto, req.user);
+    return this.service.updateFromDate(dto);
   }
 
   @Delete(':id')

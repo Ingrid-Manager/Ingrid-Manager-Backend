@@ -8,7 +8,6 @@ import {
   Post,
   Req,
   UseGuards,
-  ValidationPipe,
 } from '@nestjs/common';
 import { CalendarEventsService } from './calendar-events.service';
 import { CalendarEventFilterDto } from './application/dto/calendar-event-filter.dto';
@@ -42,7 +41,7 @@ export class CalendarEventsController {
   @Roles(RoleEnum.admin, RoleEnum.verwaltung, RoleEnum.user)
   @Patch()
   update(
-    @Body(new ValidationPipe())
+    @Body()
     dto: UpdateCalendarEventDto,
     @Req() req,
   ) {
