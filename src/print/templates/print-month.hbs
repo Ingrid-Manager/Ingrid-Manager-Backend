@@ -159,7 +159,6 @@
     .fc .fc-event {
       border-radius: 4px !important;
       border: none !important;
-      border-left: 3px solid transparent !important;
       padding: 1px 3px !important;
       font-size: 7.5pt !important;
       line-height: 1.25 !important;
@@ -318,8 +317,12 @@
       eventDidMount: function (info) {
         const color = info.event.extendedProps.roomColor;
         if (color) {
-          info.el.style.backgroundColor = color + '33';
-          info.el.style.borderLeftColor = color;
+          // Volle Raumfarbe als Hintergrund (vorher nur 20% Deckkraft
+          // gemischt mit Weiß — stark verwässerte Darstellung, siehe
+          // print-week.hbs für die ausführliche Begründung). Kein
+          // border-left-Akzent mehr nötig, da er in derselben Farbe wie
+          // die jetzt volle Füllung ohnehin unsichtbar wäre.
+          info.el.style.backgroundColor = color;
           // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
           // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
           // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).

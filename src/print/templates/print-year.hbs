@@ -201,8 +201,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      border-left-width: 2px;
-      border-left-style: solid;
       flex-shrink: 0;
     }
     .ev-more {
@@ -420,8 +418,13 @@
               const e = document.createElement('div');
               e.className = 'ev';
               if (ev.roomColor) {
-                e.style.backgroundColor = ev.roomColor + '33';
-                e.style.borderLeftColor = ev.roomColor;
+                // Volle Raumfarbe als Hintergrund (vorher nur 20%
+                // Deckkraft — stark verwässerte Darstellung, siehe
+                // print-week.hbs für die ausführliche Begründung). Kein
+                // border-left-Akzent mehr nötig, da er in derselben
+                // Farbe wie die jetzt volle Füllung ohnehin unsichtbar
+                // wäre.
+                e.style.backgroundColor = ev.roomColor;
                 // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
                 // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
                 // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).

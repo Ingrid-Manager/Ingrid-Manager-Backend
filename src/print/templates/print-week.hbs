@@ -168,7 +168,6 @@
     .fc .fc-timegrid-event {
       border-radius: 5px !important;
       border: none !important;
-      border-left: 3px solid transparent !important;
       padding: 1.5px 3px !important;
       font-size: 7pt !important;
       line-height: 1.3 !important;
@@ -312,9 +311,10 @@
       // und "Mütterkreis" zur gleichen Zeit im selben Raum-Slot).
       slotEventOverlap: false,
 
-      // Tageszeit-Bereiche ausblenden
-      allDaySlot:     true,
-      allDayText:     'Ganztägig',
+      // Ganztägige Termine gibt es im System nicht mehr — die eigene
+      // "Ganztägig"-Zeile am oberen Rand der Wochenansicht wird daher
+      // nicht mehr gebraucht (auf Kundenwunsch entfernt).
+      allDaySlot:     false,
       nowIndicator:   false,
 
       // Wochentag + Datum im Spaltenkopf
@@ -328,8 +328,14 @@
       eventDidMount: function (info) {
         const color = info.event.extendedProps.roomColor;
         if (color) {
-          info.el.style.backgroundColor = color + '33';
-          info.el.style.borderLeftColor = color;
+          // Volle Raumfarbe als Hintergrund (vorher nur 20% Deckkraft
+          // gemischt mit Weiß — das ergab eine stark verwässerte, blasse
+          // Darstellung, die kaum noch der eigentlichen Raumfarbe glich
+          // und zudem die automatische Kontrastberechnung für den
+          // Titeltext torpedierte, siehe unten). Kein separater
+          // border-left-Akzent mehr nötig, da er in derselben Farbe wie
+          // die jetzt volle Füllung ohnehin unsichtbar wäre.
+          info.el.style.backgroundColor = color;
           // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
           // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
           // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).
