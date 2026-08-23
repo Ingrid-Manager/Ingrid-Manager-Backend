@@ -1,4 +1,5 @@
 import { CalendarEventResponseDto } from '../calendar-events/application/dto/calendar-event-response.dto';
+import { SeriesFrequency } from '../series-events/frequencys.enum';
 
 export interface PrintRoom {
   id: number;
@@ -181,6 +182,18 @@ export function buildYearEvents(
   const result: Record<string, unknown>[] = [];
 
   for (const event of events) {
+    // Auf Kundenwunsch: wöchentlich/zweiwöchentlich wiederkehrende Termine
+    // werden in der Jahresansicht komplett ausgeblendet (zu viele
+    // Wiederholungen würden die knapp bemessenen Tageszellen zutexten).
+    // Betrifft NUR die Jahresansicht — Wochen-/Monatsansicht zeigen diese
+    // Termine weiterhin normal an.
+    if (
+      event.seriesFrequency === SeriesFrequency.WEEKLY ||
+      event.seriesFrequency === SeriesFrequency.BIWEEKLY
+    ) {
+      continue;
+    }
+
     const start = new Date(event.start);
     const end = new Date(event.end);
     const titlePrefix = event.allDay ? '' : `${formatTimeLabel(start)} `;

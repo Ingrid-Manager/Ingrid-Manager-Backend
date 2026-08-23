@@ -1,3 +1,5 @@
+import { SeriesFrequency } from '../../../series-events/frequencys.enum';
+
 export class CalendarEventResponseDto {
   id!: number;
   title!: string;
@@ -14,4 +16,12 @@ export class CalendarEventResponseDto {
   isBackground?: boolean;
   seriesid?: number;
   isModified!: boolean;
+  /**
+   * Wiederholungs-Rhythmus der Serie (falls Serientermin), z. B. für die
+   * Druckfunktion: In der Jahresansicht werden wöchentlich/zweiwöchentlich
+   * wiederkehrende Termine ausgeblendet (siehe
+   * print-fullcalendar-data.ts::buildYearEvents). `undefined` bei
+   * Einzelterminen ohne Serie.
+   */
+  seriesFrequency?: SeriesFrequency;
 }

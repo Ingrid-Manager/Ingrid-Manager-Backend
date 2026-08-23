@@ -173,11 +173,27 @@
       line-height: 1.3 !important;
       font-weight: 500;
       box-shadow: 0 1px 3px rgba(0,0,0,.1);
+      /* Ohne Mindesthöhe richtet sich die Boxhöhe strikt nach der
+         Termin-DAUER (z. B. 30 Min. = sehr flache Box) — bei kurzen
+         Terminen mit langem Titel reichte das nicht für mehrzeiligen,
+         umgebrochenen Text, der Titel wurde abgeschnitten (mit echten
+         Test-PDFs entdeckt). Garantiert genug Höhe für mehrere Zeilen
+         Titel + Zeit-Zeile, auch bei sehr kurzen Terminen.
+      */
+      min-height: 14mm;
     }
     .fc .fc-event-title {
       font-weight: 600;
       white-space: normal;   /* lange Titel umbrechen statt hart abzuschneiden */
       overflow: hidden;
+      /* Silbentrennung statt wahllosem Wortabbruch mitten im Wort (z. B.
+         "Jugendgrupp/pe") — dank lang="de" oben nutzt der Browser
+         korrekte deutsche Trennregeln. overflow-wrap als Sicherheitsnetz
+         für den seltenen Fall eines einzelnen Wortes, das selbst mit
+         Trennung nicht in die Spalte passt. */
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      overflow-wrap: break-word;
     }
     .fc .fc-event-time  { font-size: 6.5pt; opacity: .8; }
 

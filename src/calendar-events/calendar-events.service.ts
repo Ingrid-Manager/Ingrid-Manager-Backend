@@ -73,6 +73,11 @@ export class CalendarEventsService {
       .leftJoinAndSelect('event.room', 'room')
       .leftJoinAndSelect('event.category', 'category')
       .leftJoinAndSelect('event.user', 'user')
+      // Für die Jahresansicht der Druckfunktion: dort sollen wöchentlich/
+      // zweiwöchentlich wiederkehrende Termine ausgeblendet werden. Dafür
+      // wird die Wiederholungs-Frequenz der Serie benötigt (siehe
+      // CalnedarEventMapper / print-fullcalendar-data.ts::buildYearEvents).
+      .leftJoinAndSelect('event.series', 'series')
       .where('event.start <= :end', { end: filter.end })
       .andWhere('event.end >= :start', { start: filter.start });
 
@@ -131,13 +136,7 @@ export class CalendarEventsService {
       event.isModified = true;
     }
 
-    // Der Ersteller/Owner eines Termins darf beim Bearbeiten nie verändert
-    // werden - selbst wenn er (versehentlich oder böswillig) im Payload
-    // mitgeschickt wird.
-    const updateData: Record<string, unknown> = { ...dto };
-    delete updateData.createdbyid;
-
-    Object.assign(event, updateData);
+    Object.assign(event, dto);
 
     return this.repo.save(event);
   }
