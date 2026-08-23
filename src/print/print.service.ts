@@ -2,7 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalendarEventsService } from '../calendar-events/calendar-events.service';
 import { RoomsService } from '../rooms/rooms.service';
-import { PdfRendererService } from './pdf-renderer.service';
+import { RemotePdfRendererService } from './remote-pdf-renderer.service';
+import { PrintHtmlCacheService } from './print-html-cache.service';
 import { PrintTemplateService } from './print-template.service';
 import {
   PrintCalendarDto,
@@ -49,12 +50,18 @@ export class PrintService {
   constructor(
     private readonly calendarEventsService: CalendarEventsService,
     private readonly roomsService: RoomsService,
-    private readonly pdfRenderer: PdfRendererService,
+    private readonly remotePdfRenderer: RemotePdfRendererService,
+    private readonly htmlCache: PrintHtmlCacheService,
     private readonly templates: PrintTemplateService,
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
-  async generateCalendarPdf(dto: PrintCalendarDto): Promise<Buffer> {
+  /**
+   * Erzeugt das Druck-HTML, lässt es vom externen PDF-Server rendern und
+   * gibt die Download-URL zurück, unter der das fertige PDF DIREKT vom
+   * PDF-Server (nicht über dieses Backend) abrufbar ist.
+   */
+  async generateCalendarPdf(dto: PrintCalendarDto): Promise<string> {
     const range = this.resolveRange(dto.type, dto.date);
     const rooms = await this.resolveRooms(dto.roomIds);
     const roomIdSet = new Set(rooms.map((r) => r.id));
@@ -118,10 +125,57 @@ export class PrintService {
       fullCalendarScript,
     });
 
-    return this.pdfRenderer.renderHtmlToPdf(
-      html,
-      PDF_OPTIONS_BY_TYPE[dto.type],
-    );
+    // Statt das PDF lokal zu rendern: HTML kurzzeitig unter einem
+    // einmalig nutzbaren Token ablegen und den externen PDF-Render-Server
+    // bitten, genau diese URL zu laden (siehe PrintHtmlController /
+    // RemotePdfRendererService für die Absicherung dieses Aufrufs).
+    const token = this.htmlCache.store(html);
+    const backendDomain = this.configService.getOrThrow('app.backendDomain', {
+      infer: true,
+    });
+
+    // Wichtige Absicherung gegen eine leicht zu übersehende Fehlkonfiguration:
+    // BACKEND_DOMAIN fällt (siehe app.config.ts) standardmäßig auf
+    // "http://localhost" zurück, falls die Umgebungsvariable fehlt. Das
+    // war früher harmlos (nur für Links in E-Mails genutzt), ist jetzt
+    // aber kritisch: Der externe PDF-Server (ein ANDERER Server!) würde
+    // dann angewiesen, SEINEN EIGENEN localhost abzufragen statt dieses
+    // Backend — das schlägt entweder mit einem verwirrenden Fehler fehl
+    // oder liefert (falls dort zufällig auch etwas auf demselben Port
+    // lauscht) sogar falsche Inhalte, ohne dass der eigentliche Grund
+    // offensichtlich wäre. Deshalb hier ein früher, eindeutiger Fehler
+    // statt eines mysteriösen Fehlschlags weiter unten in der Kette.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(backendDomain)) {
+      throw new Error(
+        `BACKEND_DOMAIN ist auf "${backendDomain}" gesetzt (bzw. nicht konfiguriert). ` +
+          'Für die Druckfunktion muss dies die von außen erreichbare Adresse ' +
+          'dieses Backends sein (z. B. "https://backend.ingrid-manager.de"), ' +
+          'da der externe PDF-Server darüber das generierte HTML abruft.',
+      );
+    }
+
+    const apiPrefix = this.configService.getOrThrow('app.apiPrefix', {
+      infer: true,
+    });
+    const printHtmlUrl = `${backendDomain.replace(/\/$/, '')}/${apiPrefix}/v1/print-html/${token}`;
+
+    const filename = `kalender-${this.safeFilenamePart(dto.type)}-${this.safeFilenamePart(dto.date)}`;
+
+    return this.remotePdfRenderer.renderUrlToDownloadUrl(printHtmlUrl, {
+      ...PDF_OPTIONS_BY_TYPE[dto.type],
+      filename,
+    });
+  }
+
+  /**
+   * Nur alphanumerische Zeichen, Bindestrich, Unterstrich — für den
+   * Dateinamen im Download-Link. dto.date/dto.type sind zwar bereits über
+   * class-validator strikt validiert (@IsDateString / @IsEnum) und damit
+   * schon jetzt unbedenklich, aber diese zusätzliche Filterung schadet
+   * nicht (Defense-in-Depth, falls die Validierung jemals gelockert wird).
+   */
+  private safeFilenamePart(value: string): string {
+    return value.replace(/[^a-zA-Z0-9_-]/g, '_');
   }
 
   private async resolveRooms(roomIds?: number[]): Promise<PrintRoom[]> {
