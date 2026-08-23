@@ -69,7 +69,6 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid var(--accent);
       padding-bottom: 2.5mm;
     }
     .page-header h1 {
@@ -83,21 +82,9 @@
       color: var(--muted);
       margin-top: 1.5mm;
     }
-    .logo-box {
-      width: 32mm;
-      height: 18mm;
-      border: 1.5px dashed #9aa4b2;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9aa4b2;
-      font-size: 8pt;
-      text-align: center;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-    .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    /* Logo vorerst deaktiviert (auf Kundenwunsch) — .logo-box-Regel und
+       das zugehörige Markup weiter unten bewusst entfernt, nicht nur
+       versteckt. Bei Bedarf einfach wieder ergänzen. */
 
     /* ─── 3 Monate vertikal gestapelt ────────────────────────── */
     .months-grid {
@@ -235,24 +222,22 @@
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 3mm;
+      gap: 2mm;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 1.5mm;
-      border: 1px solid var(--border);
+      justify-content: center;
       border-radius: 5px;
-      padding: 1mm 2mm;
+      padding: 1mm 2.5mm;
       font-size: 7pt;
+      font-weight: 600;
       flex: 1;
       min-width: 0;
-    }
-    .swatch {
-      width: 7mm;
-      height: 3.5mm;
-      border-radius: 2.5px;
-      flex-shrink: 0;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .info-line {
       display: flex;
@@ -470,14 +455,11 @@
       rooms.forEach(r => {
         const item = document.createElement('div');
         item.className = 'legend-item';
-
-        const swatch = document.createElement('span');
-        swatch.className = 'swatch';
-        // .style-Zuweisung statt String-Interpolation in innerHTML:
-        // wird vom Browser als CSS-Wert interpretiert, nicht als HTML
-        // geparst — kein Angriffsvektor über r.color möglich.
-        swatch.style.background = r.color || '#999999';
-        item.appendChild(swatch);
+        // .style-Zuweisungen statt String-Interpolation in innerHTML:
+        // werden vom Browser als CSS-Wert interpretiert, nicht als HTML
+        // geparst — kein Angriffsvektor über r.color/r.textColor möglich.
+        item.style.background = r.color || '#999999';
+        item.style.color = r.textColor || '#000000';
 
         // textContent statt innerHTML: r.title (Raumname aus der DB,
         // von Nutzer:innen frei vergeben) wird als reiner Text
@@ -519,8 +501,7 @@
         <div>
           <h1>${escapeHtml(ORG_NAME)} – Jahresansicht ${YEAR}</h1>
           <p class="sub">${q.label} &nbsp;·&nbsp; DIN A3 quer &nbsp;·&nbsp; Seite ${qi+1} von 4</p>
-        </div>
-        <div class="logo-box">{{#if logoUrl}}<img src="{{logoUrl}}" alt="Logo">{{else}}Logo<br>Platzhalter{{/if}}</div>`;
+        </div>`;
       page.appendChild(header);
 
       // 3 Monate

@@ -4,6 +4,48 @@ export interface PrintRoom {
   id: number;
   title: string;
   color: string;
+  /** Automatisch berechnete, gut lesbare Textfarbe (Schwarz oder Weiß)
+   *  für Text auf einem mit `color` gefüllten Hintergrund. */
+  textColor: string;
+}
+
+/**
+ * Berechnet eine gut lesbare Textfarbe (Schwarz oder Weiß) für eine
+ * gegebene Hintergrundfarbe, basierend auf der wahrgenommenen Helligkeit
+ * (YIQ-Formel, ein gängiger, einfacher Kontrast-Schätzwert). Wird für die
+ * Raumlegende gebraucht, deren Kästen jetzt in der jeweiligen Raumfarbe
+ * gefüllt sind — je nach gewählter Farbe (z. B. helles Gelb vs. dunkles
+ * Grün) braucht der Raumname davor entweder schwarze oder weiße Schrift,
+ * um lesbar zu bleiben.
+ *
+ * Akzeptiert alle gängigen Hex-Notationen: #RGB, #RGBA, #RRGGBB,
+ * #RRGGBBAA (ein eventuell vorhandener Alpha-Kanal wird ignoriert, da er
+ * für die reine Helligkeitsschätzung hier nicht relevant ist).
+ */
+export function contrastTextColor(hexColor: string): string {
+  let hex = (hexColor || '').replace('#', '');
+
+  // Kurzform (#RGB oder #RGBA) auf volle Länge aufblasen, z. B. "3af"
+  // -> "33aaff", "3af8" -> "33aaff88" (Alpha wird unten ohnehin ignoriert).
+  if (hex.length === 3 || hex.length === 4) {
+    hex = hex
+      .slice(0, 3)
+      .split('')
+      .map((c) => c + c)
+      .join('');
+  }
+
+  if (!/^[0-9a-fA-F]{6,8}$/.test(hex)) {
+    // Unerwartetes/ungültiges Farbformat — sicherer Standardwert.
+    return '#000000';
+  }
+
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 150 ? '#000000' : '#ffffff';
 }
 
 /**

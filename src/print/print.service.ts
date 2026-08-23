@@ -15,6 +15,7 @@ import {
   buildWeekEvents,
   buildYearEvents,
   toSafeInlineJson,
+  contrastTextColor,
   PrintRoom,
 } from './print-fullcalendar-data';
 import { AllConfigType } from '../config/config.type';
@@ -208,6 +209,7 @@ export class PrintService {
       id: room.id,
       title: room.title,
       color: room.color,
+      textColor: contrastTextColor(room.color),
     }));
   }
 

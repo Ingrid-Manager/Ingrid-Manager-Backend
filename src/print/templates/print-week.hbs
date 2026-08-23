@@ -71,7 +71,6 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid var(--accent);
       padding-bottom: 2.5mm;
     }
     .page-header h1 {
@@ -85,21 +84,10 @@
       color: var(--muted);
       margin-top: 1.5mm;
     }
-    .logo-box {
-      width: 30mm;
-      height: 18mm;
-      border: 1.5px dashed #9aa4b2;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9aa4b2;
-      font-size: 8pt;
-      text-align: center;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-    .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    /* Logo vorerst deaktiviert (auf Kundenwunsch) — .logo-box-Regel und
+       das zugehörige Markup weiter unten bewusst entfernt, nicht nur
+       versteckt. Bei Bedarf einfach wieder ergänzen: ein <div class="logo-box">
+       im <header> analog zu den anderen beiden Druckvorlagen. */
 
     /* ─── Kalender-Wrapper ───────────────────────────────────────── */
     #calendar-wrap {
@@ -217,24 +205,22 @@
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 3mm;
+      gap: 2mm;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 1.5mm;
-      border: 1px solid var(--fc-border-color);
+      justify-content: center;
       border-radius: 5px;
-      padding: 1mm 2mm;
+      padding: 1.3mm 3mm;
       font-size: 7.5pt;
+      font-weight: 600;
       flex: 1;
       min-width: 0;
-    }
-    .swatch {
-      width: 8mm;
-      height: 4mm;
-      border-radius: 3px;
-      flex-shrink: 0;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .info-line {
       display: flex;
@@ -276,9 +262,6 @@
         <h1 id="pageTitle">{{orgName}}</h1>
         <p class="sub" id="pageSubtitle">Wochenansicht · DIN A4 quer · FullCalendar v6</p>
       </div>
-      <div class="logo-box">
-        {{#if logoUrl}}<img src="{{logoUrl}}" alt="Logo" />{{else}}Logo<br>Platzhalter{{/if}}
-      </div>
     </header>
 
     <!-- Kalender -->
@@ -290,7 +273,7 @@
     <footer class="page-footer">
       <div class="legend">
         {{#each rooms}}
-        <div class="legend-item"><span class="swatch" style="background:{{this.color}};"></span>{{this.title}}</div>
+        <div class="legend-item" style="background:{{this.color}}; color:{{this.textColor}};">{{this.title}}</div>
         {{/each}}
       </div>
       <div class="info-line">
