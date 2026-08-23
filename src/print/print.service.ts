@@ -80,18 +80,21 @@ export class PrintService {
       this.configService.get<string>('ORG_NAME', { infer: true }) ??
       'Ingrid-Manager';
 
+    // Für die Anzeige in der PDF-Fußzeile: führendes "http://"/"https://"
+    // entfernen, egal wie FRONTEND_DOMAIN genau konfiguriert ist (mit
+    // oder ohne Protokoll) — dort soll nur die reine Domain stehen.
+    const rawFrontendDomain = this.configService.get<string>(
+      'app.frontendDomain',
+      { infer: true },
+    );
+    const frontendDomain = rawFrontendDomain?.replace(/^https?:\/\//i, '');
+
     const baseContext = {
       orgName,
       orgNameJson: toSafeInlineJson(orgName),
       logoUrl: this.configService.get<string>('app.logoURL', { infer: true }),
-      frontendDomain: this.configService.get<string>('app.frontendDomain', {
-        infer: true,
-      }),
-      frontendDomainJson: toSafeInlineJson(
-        this.configService.get<string>('app.frontendDomain', {
-          infer: true,
-        }) ?? '',
-      ),
+      frontendDomain,
+      frontendDomainJson: toSafeInlineJson(frontendDomain ?? ''),
       rangeLabel: range.rangeLabel,
       printedAt: new Date().toLocaleString('de-DE', {
         dateStyle: 'medium',

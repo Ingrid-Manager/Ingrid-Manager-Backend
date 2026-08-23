@@ -42,11 +42,10 @@ function parseHexColor(
 /**
  * Berechnet eine gut lesbare Textfarbe (Schwarz oder Weiß) für eine
  * gegebene Hintergrundfarbe, basierend auf der wahrgenommenen Helligkeit
- * (YIQ-Formel, ein gängiger, einfacher Kontrast-Schätzwert). Wird für die
- * Raumlegende gebraucht, deren Kästen in der jeweiligen Raumfarbe VOLL
- * gefüllt sind — je nach gewählter Farbe (z. B. helles Gelb vs. dunkles
- * Grün) braucht der Raumname davor entweder schwarze oder weiße Schrift,
- * um lesbar zu bleiben.
+ * (YIQ-Formel, ein gängiger, einfacher Kontrast-Schätzwert). Wird sowohl
+ * für die Raumlegende als auch für Termin-Titel gebraucht — Standard ist
+ * schwarze Schrift, bei ausreichend dunkler Raumfarbe wird automatisch
+ * auf Weiß umgeschaltet.
  */
 export function contrastTextColor(hexColor: string): string {
   const rgb = parseHexColor(hexColor);
@@ -56,33 +55,6 @@ export function contrastTextColor(hexColor: string): string {
   }
 
   const yiq = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-  return yiq >= 150 ? '#000000' : '#ffffff';
-}
-
-/**
- * Wie contrastTextColor(), aber für Termine in Woche/Monat/Jahr gedacht:
- * Deren Hintergrund ist dort NICHT die volle Raumfarbe, sondern eine mit
- * ca. 20 % Deckkraft auf Weiß gemischte, deutlich hellere Version davon
- * (siehe `color + '33'` in den jeweiligen Vorlagen). Eine Kontrastfarbe,
- * die auf der VOLLEN Raumfarbe basiert, würde bei dunklen Räumen fälsch-
- * licherweise Weiß liefern — obwohl der tatsächlich sichtbare Hintergrund
- * durch die geringe Deckkraft meist ohnehin schon recht hell ist, worauf
- * weißer Text kaum noch lesbar wäre (mit echtem Test-Rendering entdeckt).
- */
-export function contrastTextColorForTintedBackground(hexColor: string): string {
-  const rgb = parseHexColor(hexColor);
-  if (!rgb) {
-    return '#000000';
-  }
-
-  const alpha = 0x33 / 255; // entspricht der in den Vorlagen genutzten Deckkraft
-  const blended = {
-    r: rgb.r * alpha + 255 * (1 - alpha),
-    g: rgb.g * alpha + 255 * (1 - alpha),
-    b: rgb.b * alpha + 255 * (1 - alpha),
-  };
-
-  const yiq = (blended.r * 299 + blended.g * 587 + blended.b * 114) / 1000;
   return yiq >= 150 ? '#000000' : '#ffffff';
 }
 
@@ -155,9 +127,7 @@ export function buildWeekEvents(
     allDay: !!event.allDay,
     extendedProps: {
       roomColor: event.color ?? '#999999',
-      roomTextColor: contrastTextColorForTintedBackground(
-        event.color ?? '#999999',
-      ),
+      roomTextColor: contrastTextColor(event.color ?? '#999999'),
       roomTitle: event.room_title,
     },
   }));
@@ -183,9 +153,7 @@ export function buildMonthEvents(
       start: toDateOnlyIso(start),
       extendedProps: {
         roomColor: event.color ?? '#999999',
-        roomTextColor: contrastTextColorForTintedBackground(
-          event.color ?? '#999999',
-        ),
+        roomTextColor: contrastTextColor(event.color ?? '#999999'),
         roomTitle: event.room_title,
       },
     };
@@ -242,9 +210,7 @@ export function buildYearEvents(
         date: toDateOnlyIso(cursor),
         title,
         roomColor: event.color ?? '#999999',
-        roomTextColor: contrastTextColorForTintedBackground(
-          event.color ?? '#999999',
-        ),
+        roomTextColor: contrastTextColor(event.color ?? '#999999'),
       });
       cursor.setDate(cursor.getDate() + 1);
     }
