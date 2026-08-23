@@ -249,7 +249,6 @@
     <header class="page-header">
       <div>
         <h1>{{orgName}} – Monat {{rangeLabel}}</h1>
-        <p class="sub">Monatsansicht · DIN A4 quer · FullCalendar v6</p>
       </div>
     </header>
 
@@ -266,8 +265,8 @@
         {{/each}}
       </div>
       <div class="info-line">
-        <span>ingrid-manager.de{{#if frontendDomain}} | {{frontendDomain}}{{/if}}</span>
-        <span><strong>Druckdatum:</strong> {{printedAt}}</span>
+        <span>{{frontendDomain}}</span>
+        <span>Raumplaner Ingrid-Manager.de · Monatsansicht · DIN A4 quer · <strong>Druckdatum:</strong> {{printedAt}}</span>
       </div>
     </footer>
   </main>

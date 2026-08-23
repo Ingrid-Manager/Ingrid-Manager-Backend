@@ -256,7 +256,6 @@
     <header class="page-header">
       <div>
         <h1 id="pageTitle">{{orgName}}</h1>
-        <p class="sub" id="pageSubtitle">Wochenansicht · DIN A4 quer · FullCalendar v6</p>
       </div>
     </header>
 
@@ -273,8 +272,8 @@
         {{/each}}
       </div>
       <div class="info-line">
-        <span>ingrid-manager.de{{#if frontendDomain}} | {{frontendDomain}}{{/if}}</span>
-        <span><strong>Druckdatum:</strong> {{printedAt}}</span>
+        <span>{{frontendDomain}}</span>
+        <span>Raumplaner Ingrid-Manager.de · Wochenansicht · DIN A4 quer · <strong>Druckdatum:</strong> {{printedAt}}</span>
       </div>
     </footer>
   </main>
@@ -357,10 +356,7 @@
 
     // Überschrift dynamisch mit KW befüllen
     const startDate = calendar.view.currentStart;
-    const endDate   = new Date(calendar.view.currentEnd);
-    endDate.setDate(endDate.getDate() - 1);
 
-    const fmt = d => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const kw  = Math.ceil(
       ((startDate - new Date(startDate.getFullYear(), 0, 1)) / 86400000 +
         new Date(startDate.getFullYear(), 0, 1).getDay() + 1) / 7
@@ -368,8 +364,6 @@
 
     document.getElementById('pageTitle').textContent =
       `{{orgName}} – KW ${kw} · ${startDate.getFullYear()}`;
-    document.getElementById('pageSubtitle').textContent =
-      `${fmt(startDate)} – ${fmt(endDate)} · Wochenansicht · DIN A4 quer`;
   });
   </script>
 </body>

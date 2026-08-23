@@ -454,7 +454,7 @@
     }
 
     // Footer HTML
-    function buildFooter() {
+    function buildFooter(pageInfoLabel) {
       const footer = document.createElement('footer');
       footer.className = 'page-footer';
 
@@ -481,10 +481,9 @@
       const info = document.createElement('div');
       info.className = 'info-line';
       const printD = new Date().toLocaleDateString('de-DE');
-      const domainSuffix = FRONTEND_DOMAIN ? ` | ${escapeHtml(FRONTEND_DOMAIN)}` : '';
       info.innerHTML = `
-        <span>ingrid-manager.de${domainSuffix}</span>
-        <span><strong>Druckdatum:</strong> ${printD}</span>`;
+        <span>${escapeHtml(FRONTEND_DOMAIN || '')}</span>
+        <span>Raumplaner Ingrid-Manager.de · ${pageInfoLabel} · <strong>Druckdatum:</strong> ${printD}</span>`;
       footer.appendChild(info);
       return footer;
     }
@@ -509,7 +508,6 @@
       header.innerHTML = `
         <div>
           <h1>${escapeHtml(ORG_NAME)} – Jahresansicht ${YEAR}</h1>
-          <p class="sub">${q.label} &nbsp;·&nbsp; DIN A3 quer &nbsp;·&nbsp; Seite ${qi+1} von 4</p>
         </div>`;
       page.appendChild(header);
 
@@ -523,7 +521,7 @@
       page.appendChild(grid);
 
       // Footer
-      page.appendChild(buildFooter());
+      page.appendChild(buildFooter(`${q.label} · DIN A3 quer · Seite ${qi+1} von 4`));
       root.appendChild(page);
     });
 
