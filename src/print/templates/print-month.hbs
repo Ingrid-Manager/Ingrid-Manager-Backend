@@ -117,7 +117,11 @@
     .fc .fc-col-header-cell {
       background: #f0f4f8;
       border-color: var(--fc-border-color) !important;
-      padding: 1.5mm 0;
+      /* Bewusst schmal (statt vorher 1.5mm) — die Zeile mit "Mo, Di, ..."
+         verschwendete unnötig Höhe, die stattdessen den Tageszellen
+         zugutekommt (Ziel: 5 Termine pro Tag ohne "+N weitere" darstellen
+         zu können). */
+      padding: 0.3mm 0;
     }
     .fc .fc-col-header-cell-cushion {
       font-size: 8.5pt;
@@ -132,7 +136,9 @@
       border-color: var(--fc-border-color) !important;
     }
     .fc .fc-daygrid-day-frame {
-      padding: 1mm !important;
+      /* Etwas schmaler als vorher (1mm) — zusätzlicher Beitrag zum Ziel,
+         5 Termine pro Tag darzustellen. */
+      padding: 0.7mm !important;
       height: 100% !important;
       overflow: hidden !important;
     }
@@ -159,11 +165,14 @@
     .fc .fc-event {
       border-radius: 4px !important;
       border: none !important;
-      padding: 1px 3px !important;
-      font-size: 7.5pt !important;
-      line-height: 1.25 !important;
+      padding: 0.3px 3px !important;
+      font-size: 7pt !important;
+      line-height: 1.15 !important;
       font-weight: 500;
-      margin: 1px 0 !important;
+      /* Bewusst schmal (statt vorher 1px 0) — Ziel: 5 Termine pro Tag
+         darstellen zu können, ohne dass "+N weitere" schon bei wenigen
+         Terminen greift. */
+      margin: 0.3px 0 !important;
       cursor: default;
     }
     .fc .fc-event-title { white-space: normal; overflow: hidden; }
