@@ -10,23 +10,16 @@ export interface PrintRoom {
 }
 
 /**
- * Berechnet eine gut lesbare Textfarbe (Schwarz oder Weiß) für eine
- * gegebene Hintergrundfarbe, basierend auf der wahrgenommenen Helligkeit
- * (YIQ-Formel, ein gängiger, einfacher Kontrast-Schätzwert). Wird für die
- * Raumlegende gebraucht, deren Kästen jetzt in der jeweiligen Raumfarbe
- * gefüllt sind — je nach gewählter Farbe (z. B. helles Gelb vs. dunkles
- * Grün) braucht der Raumname davor entweder schwarze oder weiße Schrift,
- * um lesbar zu bleiben.
- *
- * Akzeptiert alle gängigen Hex-Notationen: #RGB, #RGBA, #RRGGBB,
- * #RRGGBBAA (ein eventuell vorhandener Alpha-Kanal wird ignoriert, da er
- * für die reine Helligkeitsschätzung hier nicht relevant ist).
+ * Zerlegt einen Hex-Farbwert in seine RGB-Kanäle. Akzeptiert alle
+ * gängigen Notationen: #RGB, #RGBA, #RRGGBB, #RRGGBBAA (ein eventuell
+ * vorhandener Alpha-Kanal wird ignoriert). Gibt bei ungültigem Format
+ * `null` zurück.
  */
-export function contrastTextColor(hexColor: string): string {
+function parseHexColor(
+  hexColor: string,
+): { r: number; g: number; b: number } | null {
   let hex = (hexColor || '').replace('#', '');
 
-  // Kurzform (#RGB oder #RGBA) auf volle Länge aufblasen, z. B. "3af"
-  // -> "33aaff", "3af8" -> "33aaff88" (Alpha wird unten ohnehin ignoriert).
   if (hex.length === 3 || hex.length === 4) {
     hex = hex
       .slice(0, 3)
@@ -36,15 +29,60 @@ export function contrastTextColor(hexColor: string): string {
   }
 
   if (!/^[0-9a-fA-F]{6,8}$/.test(hex)) {
+    return null;
+  }
+
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16),
+  };
+}
+
+/**
+ * Berechnet eine gut lesbare Textfarbe (Schwarz oder Weiß) für eine
+ * gegebene Hintergrundfarbe, basierend auf der wahrgenommenen Helligkeit
+ * (YIQ-Formel, ein gängiger, einfacher Kontrast-Schätzwert). Wird für die
+ * Raumlegende gebraucht, deren Kästen in der jeweiligen Raumfarbe VOLL
+ * gefüllt sind — je nach gewählter Farbe (z. B. helles Gelb vs. dunkles
+ * Grün) braucht der Raumname davor entweder schwarze oder weiße Schrift,
+ * um lesbar zu bleiben.
+ */
+export function contrastTextColor(hexColor: string): string {
+  const rgb = parseHexColor(hexColor);
+  if (!rgb) {
     // Unerwartetes/ungültiges Farbformat — sicherer Standardwert.
     return '#000000';
   }
 
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
+  const yiq = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return yiq >= 150 ? '#000000' : '#ffffff';
+}
 
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+/**
+ * Wie contrastTextColor(), aber für Termine in Woche/Monat/Jahr gedacht:
+ * Deren Hintergrund ist dort NICHT die volle Raumfarbe, sondern eine mit
+ * ca. 20 % Deckkraft auf Weiß gemischte, deutlich hellere Version davon
+ * (siehe `color + '33'` in den jeweiligen Vorlagen). Eine Kontrastfarbe,
+ * die auf der VOLLEN Raumfarbe basiert, würde bei dunklen Räumen fälsch-
+ * licherweise Weiß liefern — obwohl der tatsächlich sichtbare Hintergrund
+ * durch die geringe Deckkraft meist ohnehin schon recht hell ist, worauf
+ * weißer Text kaum noch lesbar wäre (mit echtem Test-Rendering entdeckt).
+ */
+export function contrastTextColorForTintedBackground(hexColor: string): string {
+  const rgb = parseHexColor(hexColor);
+  if (!rgb) {
+    return '#000000';
+  }
+
+  const alpha = 0x33 / 255; // entspricht der in den Vorlagen genutzten Deckkraft
+  const blended = {
+    r: rgb.r * alpha + 255 * (1 - alpha),
+    g: rgb.g * alpha + 255 * (1 - alpha),
+    b: rgb.b * alpha + 255 * (1 - alpha),
+  };
+
+  const yiq = (blended.r * 299 + blended.g * 587 + blended.b * 114) / 1000;
   return yiq >= 150 ? '#000000' : '#ffffff';
 }
 
@@ -117,6 +155,9 @@ export function buildWeekEvents(
     allDay: !!event.allDay,
     extendedProps: {
       roomColor: event.color ?? '#999999',
+      roomTextColor: contrastTextColorForTintedBackground(
+        event.color ?? '#999999',
+      ),
       roomTitle: event.room_title,
     },
   }));
@@ -142,6 +183,9 @@ export function buildMonthEvents(
       start: toDateOnlyIso(start),
       extendedProps: {
         roomColor: event.color ?? '#999999',
+        roomTextColor: contrastTextColorForTintedBackground(
+          event.color ?? '#999999',
+        ),
         roomTitle: event.room_title,
       },
     };
@@ -198,6 +242,9 @@ export function buildYearEvents(
         date: toDateOnlyIso(cursor),
         title,
         roomColor: event.color ?? '#999999',
+        roomTextColor: contrastTextColorForTintedBackground(
+          event.color ?? '#999999',
+        ),
       });
       cursor.setDate(cursor.getDate() + 1);
     }

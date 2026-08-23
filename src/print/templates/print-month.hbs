@@ -26,7 +26,7 @@
 
       --page-w: 297mm;
       --page-h: 210mm;
-      --margin: 7mm;
+      --margin: 2mm;
 
       font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     }
@@ -68,10 +68,12 @@
       margin: 14px auto;
       background: #fff;
       box-shadow: 0 8px 32px rgba(0,0,0,.14);
-      padding: var(--margin);
+      /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
+         für den eigentlichen Kalender. */
+      padding: 2mm 4mm 3mm;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      gap: 3mm;
+      gap: 1.5mm;
       overflow: hidden;
     }
 
@@ -80,7 +82,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 2.5mm;
+      padding-bottom: 1mm;
     }
     .page-header h1 {
       font-size: 15pt;
@@ -228,7 +230,7 @@
         height: 210mm;
         margin: 0;
         box-shadow: none;
-        padding: 7mm;
+        padding: 2mm 4mm 3mm;
       }
       .fc .fc-event-title { white-space: normal !important; }
     }
@@ -265,7 +267,7 @@
         {{/each}}
       </div>
       <div class="info-line">
-        <span>ingrid-manager.de</span>
+        <span>ingrid-manager.de{{#if frontendDomain}} | {{frontendDomain}}{{/if}}</span>
         <span><strong>Druckdatum:</strong> {{printedAt}}</span>
       </div>
     </footer>
@@ -318,7 +320,17 @@
         if (color) {
           info.el.style.backgroundColor = color + '33';
           info.el.style.borderLeftColor = color;
-          info.el.style.color = '#1a252f';
+          // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
+          // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
+          // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).
+          // WICHTIG: Zusätzlich zur normalen color-Eigenschaft auch die
+          // CSS-Variable --fc-event-text-color setzen — FullCalendars
+          // eigene interne Regel für den Titeltext verwendet diese
+          // Variable direkt und würde eine reine "color"-Zuweisung auf
+          // dem äußeren Element sonst überschreiben.
+          const textColor = info.event.extendedProps.roomTextColor || '#1a252f';
+          info.el.style.setProperty('--fc-event-text-color', textColor);
+          info.el.style.color = textColor;
         }
       },
     });

@@ -84,6 +84,14 @@ export class PrintService {
       orgName,
       orgNameJson: toSafeInlineJson(orgName),
       logoUrl: this.configService.get<string>('app.logoURL', { infer: true }),
+      frontendDomain: this.configService.get<string>('app.frontendDomain', {
+        infer: true,
+      }),
+      frontendDomainJson: toSafeInlineJson(
+        this.configService.get<string>('app.frontendDomain', {
+          infer: true,
+        }) ?? '',
+      ),
       rangeLabel: range.rangeLabel,
       printedAt: new Date().toLocaleString('de-DE', {
         dateStyle: 'medium',

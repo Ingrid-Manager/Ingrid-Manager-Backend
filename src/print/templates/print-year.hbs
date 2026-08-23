@@ -18,7 +18,6 @@
 
       --page-w: 420mm;
       --page-h: 297mm;
-      --margin: 8mm;
 
       font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     }
@@ -55,10 +54,12 @@
       margin: 14px auto;
       background: #fff;
       box-shadow: 0 8px 32px rgba(0,0,0,.14);
-      padding: var(--margin);
+      /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
+         für den eigentlichen Kalender. */
+      padding: 2mm 4mm 3mm;
       display: flex;
       flex-direction: column;
-      gap: 2.5mm;
+      gap: 1.5mm;
       overflow: hidden;
       page-break-after: always;
     }
@@ -258,7 +259,7 @@
         height: 297mm;
         margin: 0;
         box-shadow: none;
-        padding: var(--margin);
+        padding: 2mm 4mm 3mm;
         break-after: page;
       }
     }
@@ -277,6 +278,7 @@
 
     const YEAR = {{year}};
     const ORG_NAME = {{{orgNameJson}}};
+    const FRONTEND_DOMAIN = {{{frontendDomainJson}}};
 
     const TODAY = new Date();
     TODAY.setHours(0,0,0,0);
@@ -420,7 +422,10 @@
               if (ev.roomColor) {
                 e.style.backgroundColor = ev.roomColor + '33';
                 e.style.borderLeftColor = ev.roomColor;
-                e.style.color = '#1a252f';
+                // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
+                // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
+                // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).
+                e.style.color = ev.roomTextColor || '#1a252f';
               }
               e.textContent = ev.title;
               e.title = ev.title;
@@ -473,8 +478,9 @@
       const info = document.createElement('div');
       info.className = 'info-line';
       const printD = new Date().toLocaleDateString('de-DE');
+      const domainSuffix = FRONTEND_DOMAIN ? ` | ${escapeHtml(FRONTEND_DOMAIN)}` : '';
       info.innerHTML = `
-        <span>ingrid-manager.de</span>
+        <span>ingrid-manager.de${domainSuffix}</span>
         <span><strong>Druckdatum:</strong> ${printD}</span>`;
       footer.appendChild(info);
       return footer;

@@ -16,7 +16,11 @@
       --fc-border-color:       #d1d9e0;
       --fc-page-bg-color:      #ffffff;
       --fc-neutral-bg-color:   #f4f6f8;
-      --fc-today-bg-color:     #fffbe6;
+      /* Auf Kundenwunsch: "Heute" nicht hervorheben — identisch mit der
+         normalen Seitenhintergrundfarbe, damit FullCalendars eingebaute
+         .fc-day-today-Regel (die diese Variable nutzt) keinen sichtbaren
+         Unterschied mehr erzeugt. */
+      --fc-today-bg-color:     #ffffff;
       --fc-event-border-color: transparent;
       --fc-event-text-color: #1a252f;
 
@@ -59,10 +63,12 @@
       margin: 14px auto;
       background: #fff;
       box-shadow: 0 8px 32px rgba(0,0,0,.14);
-      padding: 7mm;
+      /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
+         für den eigentlichen Kalender. */
+      padding: 2mm 4mm 3mm;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      gap: 2.5mm;
+      gap: 1.5mm;
       overflow: hidden;
     }
 
@@ -71,7 +77,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 2.5mm;
+      padding-bottom: 1mm;
     }
     .page-header h1 {
       font-size: 15pt;
@@ -154,13 +160,9 @@
       border-color: #d1d9e0 !important;
     }
 
-    /* Heute-Spalte */
-    .fc .fc-day-today {
-      background: var(--fc-today-bg-color) !important;
-    }
-    .fc .fc-day-today .fc-col-header-cell-cushion {
-      color: var(--accent);
-    }
+    /* Heute-Spalte: bewusst NICHT hervorgehoben (auf Kundenwunsch) —
+       weder Hintergrund noch Kopfzeilen-Textfarbe weichen von einem
+       normalen Tag ab. */
 
     /* Events */
     .fc .fc-timegrid-event {
@@ -180,15 +182,10 @@
     }
     .fc .fc-event-time  { font-size: 6.5pt; opacity: .8; }
 
-    /* Now-Indicator */
-    .fc .fc-timegrid-now-indicator-line {
-      border-color: var(--accent) !important;
-      border-width: 1.5px !important;
-    }
-    .fc .fc-timegrid-now-indicator-arrow {
-      border-top-color: var(--accent) !important;
-      border-bottom-color: var(--accent) !important;
-    }
+    /* Now-Indicator (die rote/blaue "aktuelle Uhrzeit"-Linie) ist über
+       die Konfiguration (nowIndicator: false) bereits deaktiviert und
+       wird von FullCalendar dadurch gar nicht erst ins DOM eingefügt —
+       auf Kundenwunsch, da ein Ausdruck keinen "jetzt"-Zeitpunkt hat. */
 
     /* Gitter */
     .fc-theme-standard td,
@@ -241,7 +238,7 @@
         height: 210mm;
         margin: 0;
         box-shadow: none;
-        padding: 7mm;
+        padding: 2mm 4mm 3mm;
       }
       .fc .fc-scroller,
       .fc .fc-scroller-harness { overflow: hidden !important; }
@@ -277,7 +274,7 @@
         {{/each}}
       </div>
       <div class="info-line">
-        <span>ingrid-manager.de</span>
+        <span>ingrid-manager.de{{#if frontendDomain}} | {{frontendDomain}}{{/if}}</span>
         <span><strong>Druckdatum:</strong> {{printedAt}}</span>
       </div>
     </footer>
@@ -311,7 +308,7 @@
       // Tageszeit-Bereiche ausblenden
       allDaySlot:     true,
       allDayText:     'Ganztägig',
-      nowIndicator:   true,
+      nowIndicator:   false,
 
       // Wochentag + Datum im Spaltenkopf
       dayHeaderFormat: { weekday: 'short', day: '2-digit', month: '2-digit' },
@@ -326,7 +323,19 @@
         if (color) {
           info.el.style.backgroundColor = color + '33';
           info.el.style.borderLeftColor = color;
-          info.el.style.color = '#1a252f';
+          // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
+          // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
+          // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).
+          // WICHTIG: Zusätzlich zur normalen color-Eigenschaft auch die
+          // CSS-Variable --fc-event-text-color setzen — FullCalendars
+          // eigene interne Regel für .fc-event-title verwendet diese
+          // Variable direkt und würde eine reine "color"-Zuweisung auf
+          // dem äußeren Element sonst überschreiben (mit echtem
+          // Test-Rendering entdeckt: Text blieb trotz gesetzter
+          // color-Eigenschaft dunkel).
+          const textColor = info.event.extendedProps.roomTextColor || '#1a252f';
+          info.el.style.setProperty('--fc-event-text-color', textColor);
+          info.el.style.color = textColor;
         }
       },
     });
