@@ -47,6 +47,14 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   APP_HEADER_LANGUAGE!: string;
+
+  @IsUrl({ require_tld: false })
+  @IsOptional()
+  PDF_SERVICE_BASE_URL!: string;
+
+  @IsString()
+  @IsOptional()
+  PDF_SERVICE_APP_KEY!: string;
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -70,5 +78,7 @@ export default registerAs<AppConfig>('app', () => {
       process.env.APP_LOGOURL || 'https://ingrid-manager.de/media/logo.png',
     iconURL:
       process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
+    pdfServiceBaseUrl: process.env.PDF_SERVICE_BASE_URL,
+    pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
   };
 });

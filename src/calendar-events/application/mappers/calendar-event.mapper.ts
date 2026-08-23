@@ -18,6 +18,7 @@ export class CalnedarEventMapper {
       user_id: entity.user.id,
       user_name: entity.user.firstName + ' ' + entity.user.lastName,
       seriesid: entity.seriesid,
+      seriesFrequency: entity.series?.frequency,
       isModified: entity.isModified,
     };
   }
