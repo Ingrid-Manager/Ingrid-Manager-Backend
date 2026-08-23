@@ -2,6 +2,7 @@ import {
   HttpStatus,
   Injectable,
   UnprocessableEntityException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
@@ -147,6 +148,7 @@ export class UsersService {
   async update(
     id: User['id'],
     updateUserDto: UpdateUserDto,
+    currentUser: User,
   ): Promise<User | null> {
     // Do not remove comment below.
     // <updating-property />
@@ -196,6 +198,16 @@ export class UsersService {
             role: 'roleNotExists',
           },
         });
+      }
+
+      // Verwaltung darf keine Admin-Rolle vergeben.
+      if (
+        currentUser.role?.id === RoleEnum.verwaltung &&
+        updateUserDto.role?.id === RoleEnum.admin
+      ) {
+        throw new ForbiddenException(
+          'Benutzer mit der Rolle Verwaltung dürfen keine Admin-Rolle vergeben.',
+        );
       }
 
       role = {
