@@ -42,11 +42,11 @@ export class MailService {
       }) + '/confirm-email',
     );
     url.searchParams.set('hash', mailData.data.hash);
-//TODO: Vorrübergehend mit bcc der tech_email und org_email
+    //TODO: Vorrübergehend mit bcc der tech_email und org_email
     const bccAddresses = [
-  this.configService.get<string>('ORG_EMAIL', { infer: true }),
-  this.configService.get<string>('TECH_EMAIL', { infer: true }),
-].filter((email): email is string => !!email);
+      this.configService.get<string>('ORG_EMAIL', { infer: true }),
+      this.configService.get<string>('TECH_EMAIL', { infer: true }),
+    ].filter((email): email is string => !!email);
 
     await this.mailerService.sendMail({
       to: mailData.to,
