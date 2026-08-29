@@ -216,18 +216,25 @@
       text-overflow: ellipsis;
       flex-shrink: 0;
     }
-    /* Termin neben der Tageszahl: füllt den restlichen Platz der
-       Kopfzeile, statt wie die gestapelten Termine die volle Breite
-       der Zelle einzunehmen. */
-    .ev-side {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
     .ev-more {
       font-size: 5pt;
       color: var(--muted);
       font-style: italic;
       flex-shrink: 0;
+    }
+    /* Dritter Termin (oder der "+N weitere"-Hinweis, falls es noch mehr
+       sind) neben der Tageszahl: füllt den restlichen Platz der
+       Kopfzeile, statt wie die gestapelten Termine die volle Breite der
+       Zelle einzunehmen. Selektor über .day-cell-header statt nur
+       .ev-side, damit die Regel unabhängig von der Deklarations-
+       reihenfolge auch das flex-shrink: 0 von .ev bzw. .ev-more
+       überschreibt. */
+    .day-cell-header .ev-side {
+      flex: 1 1 auto;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* ─── Footer ──────────────────────────────────────────────── */
@@ -335,15 +342,16 @@
 
     const evMap = buildEventMap(events);
 
-    // Max. Termine, die zusätzlich zu dem einen Termin neben der
-    // Tageszahl (siehe .ev-side / .day-cell-header) noch darunter
-    // gestapelt werden, bevor "+N weitere" erscheint. Bei DIN A3 mit
-    // 3 Monaten/Seite ist eine Tageszelle nur ca. 11mm hoch — zusammen
-    // mit dem harten max-height auf .day-events (siehe CSS) sind 2
-    // gestapelte Termine (macht insgesamt 3 sichtbare Termine pro Tag)
-    // die realistische, mit echten Test-PDFs verifizierte Grenze, bevor
-    // Termine am Seitenende (Sa/So) sonst unsichtbar abgeschnitten
-    // werden.
+    // Max. Termine, die direkt unter der Tageszahl gestapelt werden.
+    // Der Termin danach (also der dritte) wandert stattdessen neben die
+    // Zahl in die Kopfzeile (siehe .ev-side / .day-cell-header), alles
+    // ab dem vierten Termin wird dort zu "+N weitere" zusammengefasst.
+    // Bei DIN A3 mit 3 Monaten/Seite ist eine Tageszelle nur ca. 11mm
+    // hoch — zusammen mit dem harten max-height auf .day-events (siehe
+    // CSS) sind 2 gestapelte Termine (macht insgesamt 3 sichtbare
+    // Termine pro Tag) die realistische, mit echten Test-PDFs
+    // verifizierte Grenze, bevor Termine am Seitenende (Sa/So) sonst
+    // unsichtbar abgeschnitten werden.
     const MAX_STACKED_EVENTS = 2;
 
     // Gemeinsame Formatierung für Termin-Elemente (neben der Zahl wie
@@ -443,47 +451,43 @@
           const key  = ymd(date);
           const evts = evMap.get(key);
           if (evts && isCurr) {
-            // Erster Termin wandert neben die Tageszahl in den bislang
-            // ungenutzten Freiraum der Kopfzeile, der Rest wird wie
-            // gehabt darunter gestapelt.
-            const [sideEvent, ...rest] = evts;
+            // Erste beiden Termine werden wie gehabt unter der Zahl
+            // gestapelt, alles ab dem dritten Termin geht in die
+            // Kopfzeile (siehe unten).
+            const stacked = evts.slice(0, MAX_STACKED_EVENTS);
+            const rest = evts.slice(MAX_STACKED_EVENTS);
 
-            const sideEl = document.createElement('div');
-            sideEl.className = 'ev ev-side';
-            styleEvent(sideEl, sideEvent);
-            header.appendChild(sideEl);
-
-            // Garantiert NIE mehr als MAX_STACKED_EVENTS Zeilen unter
-            // der Kopfzeile (Termine + ggf. "+N weitere"), damit die
-            // Zelle ihr festes Höhenbudget (siehe .day-cell max-height)
-            // niemals sprengt. Gibt es mehr Termine als Platz, wird die
-            // letzte Zeile durch den "+N weitere"-Hinweis ersetzt statt
-            // angehängt.
-            const hasOverflow = rest.length > MAX_STACKED_EVENTS;
-            const visibleCount = hasOverflow ? MAX_STACKED_EVENTS - 1 : rest.length;
-            const visible = rest.slice(0, Math.max(visibleCount, 0));
-            const overflowCount = rest.length - visible.length;
-
-            if (visible.length > 0 || overflowCount > 0) {
+            if (stacked.length > 0) {
               const wrap = document.createElement('div');
               wrap.className = 'day-events';
 
-              visible.forEach(ev => {
+              stacked.forEach(ev => {
                 const e = document.createElement('div');
                 e.className = 'ev';
                 styleEvent(e, ev);
                 wrap.appendChild(e);
               });
 
-              if (overflowCount > 0) {
-                const more = document.createElement('div');
-                more.className = 'ev-more';
-                more.textContent = `+${overflowCount} weitere`;
-                more.title = rest.slice(visible.length).map(e => e.title).join(', ');
-                wrap.appendChild(more);
-              }
-
               cell.appendChild(wrap);
+            }
+
+            // Dritter Termin (falls vorhanden) wandert neben die
+            // Tageszahl in den bislang ungenutzten Freiraum der
+            // Kopfzeile. Gibt es noch mehr Termine, erscheint dort
+            // stattdessen der "+N weitere"-Hinweis — für einzelne
+            // weitere Termine ist ab dem vierten ohnehin kein Platz
+            // mehr, siehe .day-cell max-height.
+            if (rest.length === 1) {
+              const sideEl = document.createElement('div');
+              sideEl.className = 'ev ev-side';
+              styleEvent(sideEl, rest[0]);
+              header.appendChild(sideEl);
+            } else if (rest.length > 1) {
+              const more = document.createElement('div');
+              more.className = 'ev-more ev-side';
+              more.textContent = `+${rest.length} weitere`;
+              more.title = rest.map(e => e.title).join(', ');
+              header.appendChild(more);
             }
           }
 
