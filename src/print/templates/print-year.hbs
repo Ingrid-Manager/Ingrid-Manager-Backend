@@ -201,6 +201,10 @@
     .day-events {
       display: flex;
       flex-direction: column;
+      /* flex-start statt des Default-"stretch": die Termin-Boxen sollen
+         sich an ihrer Textlänge orientieren (Hintergrund endet am
+         Titelende), statt immer die volle Zellbreite einzunehmen. */
+      align-items: flex-start;
       gap: .6mm;
       margin-top: .4mm;
       min-height: 0;
@@ -214,6 +218,12 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      /* Begrenzung auf die Zellbreite: durch align-items: flex-start
+         oben schrumpft die Box zwar auf ihren Inhalt, ohne max-width
+         könnte ein sehr langer Titel sie aber trotzdem über den
+         verfügbaren Platz hinaus breit machen, statt per Ellipsis
+         abgeschnitten zu werden. */
+      max-width: 100%;
       flex-shrink: 0;
     }
     .ev-more {
@@ -223,14 +233,17 @@
       flex-shrink: 0;
     }
     /* Dritter Termin (oder der "+N weitere"-Hinweis, falls es noch mehr
-       sind) neben der Tageszahl: füllt den restlichen Platz der
-       Kopfzeile, statt wie die gestapelten Termine die volle Breite der
-       Zelle einzunehmen. Selektor über .day-cell-header statt nur
+       sind) neben der Tageszahl. flex-grow: 0 (statt 1) — die Box soll
+       sich an der Textlänge orientieren (Hintergrund endet am
+       Titelende), nicht den ganzen restlichen Platz der Kopfzeile
+       ausfüllen. flex-shrink: 1 + min-width: 0 sorgen dafür, dass ein zu
+       langer Titel trotzdem innerhalb der Zelle bleibt und per Ellipsis
+       abgeschnitten wird. Selektor über .day-cell-header statt nur
        .ev-side, damit die Regel unabhängig von der Deklarations-
        reihenfolge auch das flex-shrink: 0 von .ev bzw. .ev-more
        überschreibt. */
     .day-cell-header .ev-side {
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       min-width: 0;
       white-space: nowrap;
       overflow: hidden;
