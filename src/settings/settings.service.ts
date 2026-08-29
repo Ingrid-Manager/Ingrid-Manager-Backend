@@ -25,6 +25,7 @@ export class SettingsService {
         infer: true,
       }),
       techEmail: this.configService.get<string>('TECH_EMAIL', { infer: true }),
+      smtpUser: this.configService.get<string>('mail.user', { infer: true }),
     };
   }
 
