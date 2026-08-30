@@ -102,22 +102,22 @@
       border-radius: 8px;
       overflow: hidden;
       display: grid;
-      /* Titel-Spalte | Wochentag-Spalte | 6 Wochen-Spalten */
-      grid-template-columns: 18mm 9mm repeat(6, minmax(0, 1fr));
-      /* minmax(0, 1fr) statt nur 1fr: verhindert, dass eine Zeile mit
+      /* Titel-Spalte | 7 Wochentags-Spalten (Mo–So) */
+      grid-template-columns: 18mm repeat(7, minmax(0, 1fr));
+      /* minmax(0, 1fr) statt nur 1fr: verhindert, dass eine Spalte mit
          vielen Terminen an einem Tag über ihren fairen Anteil hinaus
-         wächst und dadurch Sa/So-Zeilen am Seitenende abschneidet
-         (mit echten Testdaten nachgewiesen — siehe Kommentar unten bei
+         wächst und dadurch Wochen am Seitenende abschneidet (mit echten
+         Testdaten nachgewiesen — siehe Kommentar unten bei
          MAX_STACKED_EVENTS). */
-      grid-template-rows: repeat(7, minmax(0, 1fr));
+      grid-template-rows: repeat(6, minmax(0, 1fr));
       flex: 1 1 0;
       min-height: 0;
     }
 
-    /* Monatsname — linke Spalte, alle 7 Zeilen */
+    /* Monatsname — linke Spalte, alle 6 Zeilen */
     .month-title {
       grid-column: 1;
-      grid-row: 1 / 8;
+      grid-row: 1 / 7;
       background: var(--accent);
       color: #fff;
       font-size: 9pt;
@@ -132,23 +132,7 @@
       border-right: 1px solid rgba(255,255,255,.25);
     }
 
-    /* Wochentag-Labels — zweite Spalte, je eine Zeile */
-    .wd-label {
-      grid-column: 2;
-      background: #f0f4f8;
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 6.5pt;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .wd-label.weekend { color: #888; background: #f7f8fa; }
-    .wd-label:last-of-type { border-bottom: none; }
-
-    /* Tages-Zellen — Spalten 3–8, Zeilen 1–7 */
+    /* Tages-Zellen — Spalten 2–8 (Mo–So), Zeilen 1–6 (Kalenderwochen) */
     .day-cell {
       border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
@@ -162,17 +146,17 @@
       /* Harte Obergrenze (statt nur die Grid-Zeile per fr/minmax zu
          verlassen): verhindert, dass eine terminreiche Zelle ihrer
          Zeile mehr Höhe "abnimmt" als andere Zeilen, wodurch sonst
-         Sa/So am Monats-/Seitenende unsichtbar abgeschnitten werden
-         können (mit echten Test-PDFs nachgewiesen). 11mm ≈ 1/7 der
+         Wochen am Monats-/Seitenende unsichtbar abgeschnitten werden
+         können (mit echten Test-PDFs nachgewiesen). 12.8mm ≈ 1/6 der
          Monatsblockhöhe auf einer A3-Seite mit 3 Monaten.
       */
-      max-height: 11mm;
+      max-height: 12.8mm;
       overflow: hidden;
     }
-    /* letzte Wochen-Spalte: kein rechter Rand (Klasse wird per JS gesetzt) */
-    .day-cell.last-week { border-right: none; }
-    /* unterste Zeile (So): kein unterer Rand */
-    .day-cell.row-7 { border-bottom: none; }
+    /* letzte Wochentag-Spalte (So): kein rechter Rand (Klasse wird per JS gesetzt) */
+    .day-cell.last-col { border-right: none; }
+    /* unterste Zeile (letzte Kalenderwoche): kein unterer Rand */
+    .day-cell.last-row { border-bottom: none; }
 
     /* Kopfzeile der Tageszelle: Tageszahl + (falls vorhanden) ein Termin
        rechts daneben — nutzt den Freiraum neben der Zahl, statt ihn
@@ -195,7 +179,7 @@
     .day-cell.other-month .day-num { color: #b8c0cc; }
     .day-cell.today { background: var(--today); }
     .day-cell.today .day-num { color: var(--accent); }
-    .day-cell.weekend-row { background: #fafbfc; }
+    .day-cell.weekend-day { background: #fafbfc; }
 
     /* Events im Jahreskalender */
     .day-events {
@@ -232,7 +216,7 @@
       font-style: italic;
       flex-shrink: 0;
     }
-    /* Dritter Termin (oder der "+N weitere"-Hinweis, falls es noch mehr
+    /* Vierter Termin (oder der "+N weitere"-Hinweis, falls es noch mehr
        sind) neben der Tageszahl. flex-grow: 0 (statt 1) — die Box soll
        sich an der Textlänge orientieren (Hintergrund endet am
        Titelende), nicht den ganzen restlichen Platz der Kopfzeile
@@ -356,16 +340,14 @@
     const evMap = buildEventMap(events);
 
     // Max. Termine, die direkt unter der Tageszahl gestapelt werden.
-    // Der Termin danach (also der dritte) wandert stattdessen neben die
+    // Der Termin danach (also der vierte) wandert stattdessen neben die
     // Zahl in die Kopfzeile (siehe .ev-side / .day-cell-header), alles
-    // ab dem vierten Termin wird dort zu "+N weitere" zusammengefasst.
-    // Bei DIN A3 mit 3 Monaten/Seite ist eine Tageszelle nur ca. 11mm
-    // hoch — zusammen mit dem harten max-height auf .day-events (siehe
-    // CSS) sind 2 gestapelte Termine (macht insgesamt 3 sichtbare
-    // Termine pro Tag) die realistische, mit echten Test-PDFs
-    // verifizierte Grenze, bevor Termine am Seitenende (Sa/So) sonst
-    // unsichtbar abgeschnitten werden.
-    const MAX_STACKED_EVENTS = 2;
+    // ab dem fünften Termin wird dort zu "+N weitere" zusammengefasst.
+    // Seit die Kalenderwochen als Zeilen statt Zeilen als Wochentage
+    // angeordnet sind, ist eine Tageszelle ca. 12.8mm statt 11mm hoch
+    // (6 statt 7 Zeilen pro Monatsblock) — der zusätzliche Platz erlaubt
+    // 3 gestapelte Termine (insgesamt 4 sichtbare Termine pro Tag).
+    const MAX_STACKED_EVENTS = 3;
 
     // Gemeinsame Formatierung für Termin-Elemente (neben der Zahl wie
     // auch gestapelt): Raumfarbe als Hintergrund plus automatisch
@@ -383,7 +365,6 @@
 
     const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni',
                        'Juli','August','September','Oktober','November','Dezember'];
-    const WEEKDAYS  = ['Mo','Di','Mi','Do','Fr','Sa','So'];
 
     // Kalender-Zellen für einen Monat erzeugen (Montag-Start, 6 Wochen)
     function buildMonth(year, monthIdx) {
@@ -402,8 +383,8 @@
     }
 
     // Einen Monat als horizontalen Streifen rendern.
-    // Layout: Monatsname (col 1) | Wochentag-Label (col 2) | Wochen (col 3–8)
-    // Zeilen = Wochentage (Mo–So), Spalten = Kalenderwochen (max. 6)
+    // Layout: Monatsname (col 1) | Wochentage Mo–So (col 2–8)
+    // Spalten = Wochentage (Mo–So), Zeilen = Kalenderwochen (max. 6)
     function renderMonth(year, monthIdx) {
       const days    = buildMonth(year, monthIdx); // 42 Tage, Mo-Start
       const todayKey = ymd(TODAY);
@@ -415,26 +396,16 @@
       const block = document.createElement('div');
       block.className = 'month-block';
 
-      // ── Monatsname (linke Spalte, überspannt alle 7 Zeilen) ──
+      // ── Monatsname (linke Spalte, überspannt alle 6 Zeilen) ──
       const title = document.createElement('div');
       title.className = 'month-title';
       title.textContent = MONTHS_DE[monthIdx];
       block.appendChild(title);
 
-      // ── 7 Wochentag-Zeilen ─────────────────────────────────
-      WEEKDAYS.forEach((wdLabel, dowIdx) => {
-        const isWE = dowIdx >= 5; // Sa=5, So=6
-
-        // Wochentag-Label
-        const label = document.createElement('div');
-        label.className = 'wd-label' + (isWE ? ' weekend' : '');
-        label.style.gridColumn = '2';
-        label.style.gridRow    = String(dowIdx + 1);
-        label.textContent = wdLabel;
-        block.appendChild(label);
-
-        // 6 Wochen-Spalten
-        for (let weekIdx = 0; weekIdx < 6; weekIdx++) {
+      // ── 6 Kalenderwochen-Zeilen, je 7 Wochentag-Spalten ─────
+      for (let weekIdx = 0; weekIdx < 6; weekIdx++) {
+        for (let dowIdx = 0; dowIdx < 7; dowIdx++) {
+          const isWE    = dowIdx >= 5; // Sa=5, So=6
           const date    = getDay(weekIdx, dowIdx);
           const isCurr  = date.getMonth() === monthIdx;
           const isToday = ymd(date) === todayKey;
@@ -443,12 +414,12 @@
           let cls = 'day-cell';
           if (!isCurr) cls += ' other-month';
           if (isToday)  cls += ' today';
-          if (isWE && isCurr) cls += ' weekend-row';
-          if (dowIdx === 6)   cls += ' row-7';
-          if (weekIdx === 5)  cls += ' last-week';
+          if (isWE && isCurr) cls += ' weekend-day';
+          if (dowIdx === 6)   cls += ' last-col';
+          if (weekIdx === 5)  cls += ' last-row';
           cell.className = cls;
-          cell.style.gridColumn = String(weekIdx + 3);
-          cell.style.gridRow    = String(dowIdx + 1);
+          cell.style.gridColumn = String(dowIdx + 2);
+          cell.style.gridRow    = String(weekIdx + 1);
 
           const header = document.createElement('div');
           header.className = 'day-cell-header';
@@ -464,8 +435,8 @@
           const key  = ymd(date);
           const evts = evMap.get(key);
           if (evts && isCurr) {
-            // Erste beiden Termine werden wie gehabt unter der Zahl
-            // gestapelt, alles ab dem dritten Termin geht in die
+            // Erste drei Termine werden wie gehabt unter der Zahl
+            // gestapelt, alles ab dem vierten Termin geht in die
             // Kopfzeile (siehe unten).
             const stacked = evts.slice(0, MAX_STACKED_EVENTS);
             const rest = evts.slice(MAX_STACKED_EVENTS);
@@ -484,12 +455,10 @@
               cell.appendChild(wrap);
             }
 
-            // Dritter Termin (falls vorhanden) wandert neben die
+            // Vierter Termin (falls vorhanden) wandert neben die
             // Tageszahl in den bislang ungenutzten Freiraum der
             // Kopfzeile. Gibt es noch mehr Termine, erscheint dort
-            // stattdessen der "+N weitere"-Hinweis — für einzelne
-            // weitere Termine ist ab dem vierten ohnehin kein Platz
-            // mehr, siehe .day-cell max-height.
+            // stattdessen der "+N weitere"-Hinweis.
             if (rest.length === 1) {
               const sideEl = document.createElement('div');
               sideEl.className = 'ev ev-side';
@@ -506,7 +475,7 @@
 
           block.appendChild(cell);
         }
-      });
+      }
 
       return block;
     }
