@@ -14,12 +14,16 @@ import { RoleEnum } from '../roles/roles.enum';
 import { UpdateCalendarEventDto } from './application/dto/update-calendar-event.dto';
 import { CreateCalendarEventDto } from './application/dto/create-calendar-event.dto';
 import { HeatingCalendarEventsDto } from './application/dto/heating-calendar-events.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
 
 @Injectable()
 export class CalendarEventsService {
   constructor(
     @InjectRepository(CalendarEvent)
     private repo: Repository<CalendarEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   private async validateNoOverlap(
@@ -64,7 +68,19 @@ export class CalendarEventsService {
       createdbyid: user.id,
     });
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
+    });
+
+    return saved;
   }
 
   async findInRange(filter: CalendarEventFilterDto) {
@@ -137,9 +153,24 @@ export class CalendarEventsService {
     const updateData: Record<string, unknown> = { ...dto };
     delete updateData.createdbyid;
 
+    const before = { ...event };
+
     Object.assign(event, updateData);
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" bearbeitet`,
+      changes: this.auditLogService.diff(before, updateData),
+    });
+
+    return saved;
   }
 
   async delete(id: number, user: any) {
@@ -164,6 +195,17 @@ export class CalendarEventsService {
     }
 
     await this.repo.softDelete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: event.id,
+      summary: `${userLabel} hat Termin "${event.title}" gelöscht (Soft-Delete)`,
+    });
+
     return { success: true };
   }
 
