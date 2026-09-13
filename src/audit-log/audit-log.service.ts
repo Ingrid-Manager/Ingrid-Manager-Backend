@@ -171,40 +171,54 @@ export class AuditLogService {
    * Löst den Anzeigenamen eines Users auf (für summary-Texte oder den
    * userLabel-Fallback im Log-Eintrag). Lädt bei Bedarf (nur userId bekannt)
    * per withDeleted:true nach, damit auch soft-gelöschte User aufgelöst werden.
+   *
+   * Wirft NIE - Aufrufer verwenden das Ergebnis meist direkt im summary-Text
+   * der eigentlichen Aktion (Termin anlegen, User bearbeiten, ...), die durch
+   * einen Fehler beim Nachladen des Anzeigenamens nicht scheitern darf.
    */
   async getUserLabel(user: AuditLogUser | null): Promise<string> {
     if (!user) {
       return 'System';
     }
 
-    let { firstName, lastName, email } = user;
+    try {
+      let { firstName, lastName, email } = user;
 
-    const nameInfoProvided =
-      firstName !== undefined || lastName !== undefined || email !== undefined;
+      const nameInfoProvided =
+        firstName !== undefined ||
+        lastName !== undefined ||
+        email !== undefined;
 
-    if (!nameInfoProvided) {
-      // Nur die userId ist bekannt: Anzeigedaten nachladen. withDeleted, da
-      // User niemals hart gelöscht, sondern nur per softDelete deaktiviert werden.
-      const entity = await this.userRepo.findOne({
-        where: { id: user.id },
-        withDeleted: true,
-      });
+      if (!nameInfoProvided) {
+        // Nur die userId ist bekannt: Anzeigedaten nachladen. withDeleted, da
+        // User niemals hart gelöscht, sondern nur per softDelete deaktiviert werden.
+        const entity = await this.userRepo.findOne({
+          where: { id: user.id },
+          withDeleted: true,
+        });
 
-      firstName = entity?.firstName ?? null;
-      lastName = entity?.lastName ?? null;
-      email = entity?.email ?? null;
+        firstName = entity?.firstName ?? null;
+        lastName = entity?.lastName ?? null;
+        email = entity?.email ?? null;
+      }
+
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+      if (fullName) {
+        return fullName;
+      }
+
+      if (email) {
+        return email;
+      }
+
+      return `User #${user.id}`;
+    } catch (error) {
+      this.logger.error(
+        `Anzeigename für User #${user.id} konnte nicht aufgelöst werden: ${(error as Error).message}`,
+      );
+
+      return `User #${user.id}`;
     }
-
-    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
-
-    if (fullName) {
-      return fullName;
-    }
-
-    if (email) {
-      return email;
-    }
-
-    return `User #${user.id}`;
   }
 }

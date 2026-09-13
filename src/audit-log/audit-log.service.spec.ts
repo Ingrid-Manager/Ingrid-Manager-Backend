@@ -35,6 +35,14 @@ describe('AuditLogService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('getUserLabel', () => {
+    it('never throws when the user lookup fails, so callers can rely on it before their own action succeeds', async () => {
+      userRepository.findOne.mockRejectedValueOnce(new Error('connection lost'));
+
+      await expect(service.getUserLabel({ id: 9 })).resolves.toBe('User #9');
+    });
+  });
+
   describe('diff', () => {
     it('only reports fields that actually changed', () => {
       const before = { title: 'Alt', roomid: 1, description: 'x' };
@@ -109,6 +117,24 @@ describe('AuditLogService', () => {
       );
       const saved = auditLogRepository.create.mock.calls[0][0];
       expect(saved.userLabel).toBe('Max Mustermann');
+    });
+
+    it('never throws when getUserLabel fails to load the display name', async () => {
+      userRepository.findOne.mockRejectedValueOnce(new Error('DB down'));
+
+      await expect(
+        service.log({
+          user: { id: 3 },
+          action: AuditAction.CREATE,
+          entityType: 'calendar-event',
+          entityId: 1,
+          summary: 'Test',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(auditLogRepository.save).toHaveBeenCalled();
+      const saved = auditLogRepository.create.mock.calls[0][0];
+      expect(saved.userLabel).toBe('User #3');
     });
 
     it('never throws when saving fails', async () => {
