@@ -41,8 +41,15 @@ export class AuthController {
     type: LoginResponseDto,
   })
   @HttpCode(HttpStatus.OK)
-  public login(@Body() loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    return this.service.validateLogin(loginDto);
+  public login(
+    @Body() loginDto: AuthEmailLoginDto,
+    @Request() request,
+  ): Promise<LoginResponseDto> {
+    return this.service.validateLogin(
+      loginDto,
+      request.ip,
+      request.headers?.['user-agent'],
+    );
   }
 
   @Post('email/register')
@@ -114,6 +121,7 @@ export class AuthController {
   public async logout(@Request() request): Promise<void> {
     await this.service.logout({
       sessionId: request.user.sessionId,
+      userId: request.user.id,
     });
   }
 

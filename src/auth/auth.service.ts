@@ -30,6 +30,9 @@ import { User } from '../users/domain/user';
 //import { I18nService } from 'nestjs-i18n';
 import { t } from '../utils/i18n-errors';
 import authConfig from './config/auth.config';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -42,75 +45,115 @@ export class AuthService {
     @Inject(authConfig.KEY)
     private readonly authConfiguration: ConfigType<typeof authConfig>,
     //private readonly i18n: I18nService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
-  async validateLogin(loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(loginDto.email);
+  async validateLogin(
+    loginDto: AuthEmailLoginDto,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<LoginResponseDto> {
+    try {
+      const user = await this.usersService.findByEmail(loginDto.email);
 
-    if (!user) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          email: t('validation.errors.userNotFound'),
-        },
+      if (!user) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            email: t('validation.errors.userNotFound'),
+          },
+        });
+      }
+
+      if (!user.password) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            password: t('validation.errors.incorrectPassword'),
+          },
+        });
+      }
+
+      const isValidPassword = await bcrypt.compare(
+        loginDto.password,
+        user.password,
+      );
+
+      if (!isValidPassword) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            password: t('validation.errors.incorrectPassword'),
+          },
+        });
+      }
+
+      if (user.status?.id !== StatusEnum.active) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: {
+            password: t('validation.errors.userNotApproved'),
+          },
+        });
+      }
+
+      const hash = crypto
+        .createHash('sha256')
+        .update(randomStringGenerator())
+        .digest('hex');
+
+      const session = await this.sessionService.create({
+        user,
+        hash,
       });
-    }
 
-    if (!user.password) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: t('validation.errors.incorrectPassword'),
-        },
+      const { token, refreshToken, tokenExpires } = await this.getTokensData({
+        id: user.id,
+        role: user.role,
+        sessionId: session.id,
+        hash,
       });
-    }
 
-    const isValidPassword = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
-
-    if (!isValidPassword) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: t('validation.errors.incorrectPassword'),
-        },
+      const userLabel = await this.auditLogService.getUserLabel({
+        id: Number(user.id),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
       });
-    }
-
-    if (user.status?.id !== StatusEnum.active) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: t('validation.errors.userNotApproved'),
-        },
+      await this.auditLogService.log({
+        user: { id: Number(user.id) },
+        userLabel,
+        action: AuditAction.LOGIN,
+        entityType: AuditEntityType.AUTH,
+        entityId: user.id,
+        summary: `${userLabel} hat sich erfolgreich angemeldet`,
+        ip,
+        userAgent,
       });
+
+      return {
+        refreshToken,
+        token,
+        tokenExpires,
+        user,
+      };
+    } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        // Aus Sicherheitsgründen niemals Passwort/Hash loggen, nur die
+        // versuchte E-Mail-Adresse.
+        await this.auditLogService.log({
+          user: null,
+          action: AuditAction.LOGIN_FAILED,
+          entityType: AuditEntityType.AUTH,
+          entityId: null,
+          summary: `Fehlgeschlagener Login-Versuch für "${loginDto.email}"`,
+          ip,
+          userAgent,
+        });
+      }
+
+      throw error;
     }
-
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
-
-    const session = await this.sessionService.create({
-      user,
-      hash,
-    });
-
-    const { token, refreshToken, tokenExpires } = await this.getTokensData({
-      id: user.id,
-      role: user.role,
-      sessionId: session.id,
-      hash,
-    });
-
-    return {
-      refreshToken,
-      token,
-      tokenExpires,
-      user,
-    };
   }
 
   async register(dto: AuthRegisterLoginDto): Promise<void> {
@@ -123,6 +166,21 @@ export class AuthService {
       status: {
         id: StatusEnum.inactive,
       },
+    });
+
+    const userLabel = await this.auditLogService.getUserLabel({
+      id: Number(user.id),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+    await this.auditLogService.log({
+      user: { id: Number(user.id) },
+      userLabel,
+      action: AuditAction.REGISTERED,
+      entityType: AuditEntityType.AUTH,
+      entityId: user.id,
+      summary: `${userLabel} hat sich registriert`,
     });
 
     const hash = await this.jwtService.signAsync(
@@ -180,7 +238,7 @@ export class AuthService {
       id: StatusEnum.pending,
     };
 
-    await this.usersService.update(user.id, user);
+    await this.usersService.update(user.id, user, user);
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -216,6 +274,21 @@ export class AuthService {
         tokenExpires,
       },
       userName: user.firstName,
+    });
+
+    const userLabel = await this.auditLogService.getUserLabel({
+      id: Number(user.id),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+    await this.auditLogService.log({
+      user: { id: Number(user.id) },
+      userLabel,
+      action: AuditAction.PASSWORD_RESET_REQUESTED,
+      entityType: AuditEntityType.AUTH,
+      entityId: user.id,
+      summary: `${userLabel} hat einen Passwort-Reset angefordert`,
     });
   }
 
@@ -256,7 +329,22 @@ export class AuthService {
       userId: user.id,
     });
 
-    await this.usersService.update(user.id, user);
+    await this.usersService.update(user.id, user, user);
+
+    const userLabel = await this.auditLogService.getUserLabel({
+      id: Number(user.id),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+    await this.auditLogService.log({
+      user: { id: Number(user.id) },
+      userLabel,
+      action: AuditAction.PASSWORD_CHANGED,
+      entityType: AuditEntityType.AUTH,
+      entityId: user.id,
+      summary: `${userLabel} hat das Passwort per Reset-Link geändert`,
+    });
   }
 
   async me(userJwtPayload: JwtPayloadType): Promise<NullableType<User>> {
@@ -330,10 +418,29 @@ export class AuthService {
       }
     }
 
+    const passwordChanged = Boolean(userDto.password);
+
     delete userDto.email;
     delete userDto.oldPassword;
 
-    await this.usersService.update(userJwtPayload.id, userDto);
+    await this.usersService.update(userJwtPayload.id, userDto, currentUser);
+
+    if (passwordChanged) {
+      const userLabel = await this.auditLogService.getUserLabel({
+        id: Number(currentUser.id),
+        email: currentUser.email,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+      });
+      await this.auditLogService.log({
+        user: { id: Number(currentUser.id) },
+        userLabel,
+        action: AuditAction.PASSWORD_CHANGED,
+        entityType: AuditEntityType.AUTH,
+        entityId: currentUser.id,
+        summary: `${userLabel} hat das Passwort geändert`,
+      });
+    }
 
     return this.usersService.findById(userJwtPayload.id);
   }
@@ -383,11 +490,29 @@ export class AuthService {
   }
 
   async softDelete(user: User): Promise<void> {
-    await this.usersService.remove(user.id);
+    await this.usersService.remove(user.id, { id: Number(user.id) });
   }
 
-  async logout(data: Pick<JwtRefreshPayloadType, 'sessionId'>) {
-    return this.sessionService.deleteById(data.sessionId);
+  async logout(
+    data: Pick<JwtRefreshPayloadType, 'sessionId'> & { userId?: User['id'] },
+  ) {
+    const result = await this.sessionService.deleteById(data.sessionId);
+
+    if (data.userId) {
+      const userLabel = await this.auditLogService.getUserLabel({
+        id: Number(data.userId),
+      });
+      await this.auditLogService.log({
+        user: { id: Number(data.userId) },
+        userLabel,
+        action: AuditAction.LOGOUT,
+        entityType: AuditEntityType.AUTH,
+        entityId: data.userId,
+        summary: `${userLabel} hat sich abgemeldet`,
+      });
+    }
+
+    return result;
   }
 
   private async getTokensData(data: {
