@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ForbiddenException } from '@nestjs/common';
 
 import { CalendarEventsService } from './calendar-events.service';
 import { CalendarEvent } from './infrastructure/relational/persistence/entities/calendar-event.entity';
@@ -101,6 +102,24 @@ describe('CalendarEventsService', () => {
         entityId: 7,
       }),
     );
+  });
+
+  it('forbids a "user"-role account from editing an event created by someone else', async () => {
+    const user = { id: 99, role: { id: 2, name: 'user' } };
+    mockRepository.findOne.mockResolvedValueOnce({
+      id: 7,
+      title: 'Fremdes Meeting',
+      start: new Date('2026-01-01T10:00:00.000Z'),
+      end: new Date('2026-01-01T11:00:00.000Z'),
+      roomid: 1,
+      createdbyid: 42,
+    });
+
+    await expect(
+      service.update({ id: 7, title: 'Hijacked' } as any, user),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(auditLogService.log).not.toHaveBeenCalled();
   });
 
   it('logs a DELETE entry when a calendar event is soft-deleted', async () => {

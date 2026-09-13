@@ -129,7 +129,7 @@ export class CalendarEventsService {
     }
 
     // normale User dürfen nur eigene Events bearbeiten
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot edit this event');
     }
 

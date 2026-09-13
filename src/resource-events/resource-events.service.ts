@@ -116,7 +116,7 @@ export class ResourceEventsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot edit this event');
     }
 
@@ -157,7 +157,7 @@ export class ResourceEventsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot delete this event');
     }
 
