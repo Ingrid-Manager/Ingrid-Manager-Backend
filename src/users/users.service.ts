@@ -325,6 +325,15 @@ export class UsersService {
       updateUserDto.role?.id !== undefined &&
       String(beforeUser?.role?.id) !== String(updateUserDto.role.id);
 
+    // Vollständiger Diff aller übermittelten Felder - wird an jede Meldung
+    // angehängt, damit bei kombinierten Änderungen (z.B. Rollenwechsel und
+    // Namensänderung in einem Request) nichts aus dem Audit-Trail verloren
+    // geht, selbst wenn zusätzlich USER_ACTIVATED/ROLE_CHANGED greifen.
+    const changes = this.auditLogService.diff(
+      (beforeUser ?? {}) as Record<string, unknown>,
+      updateUserDto as Record<string, unknown>,
+    );
+
     let loggedSpecialAction = false;
 
     if (activatedNow) {
@@ -336,6 +345,7 @@ export class UsersService {
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat Nutzer "${targetLabel}" freigeschaltet`,
+        changes,
       });
     }
 
@@ -356,6 +366,7 @@ export class UsersService {
         entityId: id,
         summary: `${actingLabel} hat die Berechtigung von "${targetLabel}" von ${oldRoleName} zu ${newRoleName} geändert`,
         changes: {
+          ...changes,
           role: {
             old: beforeUser?.role?.id ?? null,
             new: updateUserDto.role!.id,
@@ -372,10 +383,7 @@ export class UsersService {
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat Nutzer "${targetLabel}" bearbeitet`,
-        changes: this.auditLogService.diff(
-          (beforeUser ?? {}) as Record<string, unknown>,
-          updateUserDto as Record<string, unknown>,
-        ),
+        changes,
       });
     }
   }

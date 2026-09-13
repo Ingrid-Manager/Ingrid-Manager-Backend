@@ -114,6 +114,44 @@ describe('UsersService', () => {
     );
   });
 
+  it('keeps other field changes in ROLE_CHANGED when combined in one request', async () => {
+    usersRepository.findById.mockResolvedValue({
+      id: 8,
+      firstName: 'Erika',
+      lastName: 'Musterfrau',
+      email: 'erika@example.com',
+      status: { id: StatusEnum.active },
+      role: { id: RoleEnum.user },
+    });
+    usersRepository.update.mockResolvedValue({
+      id: 8,
+      firstName: 'Erika-Neu',
+      lastName: 'Musterfrau',
+      status: { id: StatusEnum.active },
+      role: { id: RoleEnum.verwaltung },
+    });
+    auditLogService.diff.mockReturnValueOnce({
+      firstName: { old: 'Erika', new: 'Erika-Neu' },
+    });
+
+    await service.update(
+      8,
+      { role: { id: RoleEnum.verwaltung }, firstName: 'Erika-Neu' } as any,
+      { id: 1, role: { id: RoleEnum.admin } } as any,
+    );
+
+    expect(auditLogService.log).toHaveBeenCalledTimes(1);
+    expect(auditLogService.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AuditAction.ROLE_CHANGED,
+        changes: {
+          firstName: { old: 'Erika', new: 'Erika-Neu' },
+          role: { old: RoleEnum.user, new: RoleEnum.verwaltung },
+        },
+      }),
+    );
+  });
+
   it('falls back to a generic UPDATE for other field changes', async () => {
     usersRepository.findById.mockResolvedValue({
       id: 9,
