@@ -17,12 +17,36 @@ import { IPaginationOptions } from '../utils/types/pagination-options';
 import { Role } from '../roles/domain/role';
 import { Status } from '../statuses/domain/status';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+
+function userDisplayLabel(user: {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  id: User['id'];
+}): string {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+  return fullName || user.email || `User #${user.id}`;
+}
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UserRepository) {}
+  constructor(
+    private readonly usersRepository: UserRepository,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  /**
+   * @param actingUser Der ausführende Admin/Verwaltung. Fehlt bei
+   * Selbstregistrierung (auth.service.ts#register loggt dort separat
+   * REGISTERED, um Doppel-Einträge zu vermeiden).
+   */
+  async create(
+    createUserDto: CreateUserDto,
+    actingUser?: { id: number } | null,
+  ): Promise<User> {
     // Do not remove comment below.
     // <creating-property />
 
@@ -90,7 +114,7 @@ export class UsersService {
       };
     }
 
-    return this.usersRepository.create({
+    const created = await this.usersRepository.create({
       // Do not remove comment below.
       // <creating-property-payload />
       firstName: createUserDto.firstName,
@@ -102,6 +126,22 @@ export class UsersService {
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
     });
+
+    if (actingUser) {
+      const userLabel = await this.auditLogService.getUserLabel({
+        id: actingUser.id,
+      });
+      await this.auditLogService.log({
+        user: { id: actingUser.id },
+        userLabel,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.USER,
+        entityId: created.id,
+        summary: `${userLabel} hat Nutzer "${userDisplayLabel(created)}" angelegt`,
+      });
+    }
+
+    return created;
   }
 
   findManyWithPagination({
@@ -153,12 +193,12 @@ export class UsersService {
     // Do not remove comment below.
     // <updating-property />
 
+    const beforeUser = await this.usersRepository.findById(id);
+
     let password: string | undefined = undefined;
 
     if (updateUserDto.password) {
-      const userObject = await this.usersRepository.findById(id);
-
-      if (userObject && userObject?.password !== updateUserDto.password) {
+      if (beforeUser && beforeUser?.password !== updateUserDto.password) {
         const salt = await bcrypt.genSalt();
         password = await bcrypt.hash(updateUserDto.password, salt);
       }
@@ -235,7 +275,7 @@ export class UsersService {
       };
     }
 
-    return this.usersRepository.update(id, {
+    const updated = await this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
       firstName: updateUserDto.firstName,
@@ -247,9 +287,114 @@ export class UsersService {
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
     });
+
+    await this.logUserUpdate(id, beforeUser, updateUserDto, currentUser, updated);
+
+    return updated;
   }
 
-  async remove(id: User['id']): Promise<void> {
+  private async logUserUpdate(
+    id: User['id'],
+    beforeUser: NullableType<User>,
+    updateUserDto: UpdateUserDto,
+    currentUser: User,
+    updated: User,
+  ): Promise<void> {
+    const actingUserId = Number(currentUser.id);
+    const actingLabel = await this.auditLogService.getUserLabel({
+      id: actingUserId,
+    });
+    const targetLabel = userDisplayLabel({ ...updated, id });
+
+    const wasNotActive =
+      beforeUser?.status?.id === StatusEnum.pending ||
+      beforeUser?.status?.id === StatusEnum.inactive;
+    const activatedNow =
+      wasNotActive && updateUserDto.status?.id === StatusEnum.active;
+
+    const roleChanged =
+      updateUserDto.role?.id !== undefined &&
+      String(beforeUser?.role?.id) !== String(updateUserDto.role.id);
+
+    let loggedSpecialAction = false;
+
+    if (activatedNow) {
+      loggedSpecialAction = true;
+      await this.auditLogService.log({
+        user: { id: actingUserId },
+        userLabel: actingLabel,
+        action: AuditAction.USER_ACTIVATED,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        summary: `${actingLabel} hat Nutzer "${targetLabel}" freigeschaltet`,
+      });
+    }
+
+    if (roleChanged) {
+      loggedSpecialAction = true;
+      const oldRoleName = beforeUser?.role?.id
+        ? (RoleEnum[beforeUser.role.id] ?? String(beforeUser.role.id))
+        : 'unbekannt';
+      const newRoleName =
+        RoleEnum[updateUserDto.role!.id as number] ??
+        String(updateUserDto.role!.id);
+
+      await this.auditLogService.log({
+        user: { id: actingUserId },
+        userLabel: actingLabel,
+        action: AuditAction.ROLE_CHANGED,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        summary: `${actingLabel} hat die Berechtigung von "${targetLabel}" von ${oldRoleName} zu ${newRoleName} geändert`,
+        changes: {
+          role: {
+            old: beforeUser?.role?.id ?? null,
+            new: updateUserDto.role!.id,
+          },
+        },
+      });
+    }
+
+    if (!loggedSpecialAction) {
+      await this.auditLogService.log({
+        user: { id: actingUserId },
+        userLabel: actingLabel,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        summary: `${actingLabel} hat Nutzer "${targetLabel}" bearbeitet`,
+        changes: this.auditLogService.diff(
+          (beforeUser ?? {}) as Record<string, unknown>,
+          updateUserDto as Record<string, unknown>,
+        ),
+      });
+    }
+  }
+
+  async remove(
+    id: User['id'],
+    actingUser?: { id: number } | null,
+  ): Promise<void> {
+    const target = await this.usersRepository.findById(id);
+
     await this.usersRepository.remove(id);
+
+    if (actingUser) {
+      const actingLabel = await this.auditLogService.getUserLabel({
+        id: actingUser.id,
+      });
+      const targetLabel = target
+        ? userDisplayLabel({ ...target, id })
+        : `User #${id}`;
+
+      await this.auditLogService.log({
+        user: { id: actingUser.id },
+        userLabel: actingLabel,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        summary: `${actingLabel} hat Nutzer "${targetLabel}" deaktiviert (Soft-Delete)`,
+      });
+    }
   }
 }
