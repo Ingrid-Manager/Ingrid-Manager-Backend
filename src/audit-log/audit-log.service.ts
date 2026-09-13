@@ -82,9 +82,16 @@ export class AuditLogService {
     }
   }
 
-  diff<T extends Record<string, unknown>>(
-    before: T,
-    after: Partial<T>,
+  /**
+   * Vergleicht zwei Objekte und liefert nur die Felder zurück, die sich
+   * tatsächlich unterscheiden (per JSON.stringify-Vergleich). `before`/`after`
+   * bewusst als Record<string, unknown> statt generisch <T>, damit beliebige
+   * Entity-/DTO-Objekte ohne Type-Gymnastik an den Aufrufstellen übergeben
+   * werden können.
+   */
+  diff(
+    before: Record<string, unknown> | null | undefined,
+    after: Record<string, unknown>,
     ignoreFields: string[] = [],
   ): Record<string, { old: unknown; new: unknown }> {
     const ignored = new Set([...DEFAULT_IGNORED_DIFF_FIELDS, ...ignoreFields]);

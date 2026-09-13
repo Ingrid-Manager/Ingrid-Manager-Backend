@@ -288,7 +288,13 @@ export class UsersService {
       socialId: updateUserDto.socialId,
     });
 
-    await this.logUserUpdate(id, beforeUser, updateUserDto, currentUser, updated);
+    await this.logUserUpdate(
+      id,
+      beforeUser,
+      updateUserDto,
+      currentUser,
+      updated,
+    );
 
     return updated;
   }
@@ -298,13 +304,16 @@ export class UsersService {
     beforeUser: NullableType<User>,
     updateUserDto: UpdateUserDto,
     currentUser: User,
-    updated: User,
+    updated: NullableType<User>,
   ): Promise<void> {
     const actingUserId = Number(currentUser.id);
     const actingLabel = await this.auditLogService.getUserLabel({
       id: actingUserId,
     });
-    const targetLabel = userDisplayLabel({ ...updated, id });
+    const targetSource = updated ?? beforeUser;
+    const targetLabel = targetSource
+      ? userDisplayLabel({ ...targetSource, id })
+      : `User #${id}`;
 
     const wasNotActive =
       beforeUser?.status?.id === StatusEnum.pending ||
