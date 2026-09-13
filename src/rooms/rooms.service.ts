@@ -6,12 +6,16 @@ import { Room } from './infrastructure/relational/persistence/entities/room.enti
 import { NotFoundError } from 'rxjs';
 import { RoomMapper } from './application/mappers/room.mapper';
 import { UpdateRoomDto } from './application/dto/update-room.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
 
 @Injectable()
 export class RoomsService {
   constructor(
     @InjectRepository(Room)
     private repo: Repository<Room>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async create(dto: CreateRoomDto, user: any) {
@@ -19,7 +23,19 @@ export class RoomsService {
       ...dto,
       createdbyid: user.id,
     });
-    return this.repo.save(room);
+    const saved = await this.repo.save(room);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.ROOM,
+      entityId: saved.id,
+      summary: `${userLabel} hat Raum "${saved.title}" angelegt`,
+    });
+
+    return saved;
   }
 
   async findOne(id: number) {
@@ -61,7 +77,7 @@ export class RoomsService {
     return RoomMapper.toNameResponse(rooms);
   }
 
-  async update(id: number, dto: UpdateRoomDto) {
+  async update(id: number, dto: UpdateRoomDto, user: any) {
     const room = await this.repo.findOne({
       where: { id },
     });
@@ -70,11 +86,38 @@ export class RoomsService {
       throw new NotFoundException(`Raum mit id ${id} nicht gefunden`);
     }
 
+    const before = { ...room };
+
     Object.assign(room, dto);
-    return this.repo.save(room);
+    const saved = await this.repo.save(room);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.ROOM,
+      entityId: saved.id,
+      summary: `${userLabel} hat Raum "${saved.title}" bearbeitet`,
+      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+    });
+
+    return saved;
   }
 
-  async remove(id: Room['id']) {
+  async remove(id: Room['id'], user: any) {
+    const room = await this.repo.findOne({ where: { id } });
+
     await this.repo.softDelete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.ROOM,
+      entityId: id,
+      summary: `${userLabel} hat Raum "${room?.title ?? id}" gelöscht (Soft-Delete)`,
+    });
   }
 }

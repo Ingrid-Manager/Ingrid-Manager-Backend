@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../roles/roles.decorator';
@@ -26,8 +27,8 @@ export class ResourceController {
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
   @Post('create')
-  createResource(@Body() dto: CreateResourceDto) {
-    return this.service.create(dto);
+  createResource(@Body() dto: CreateResourceDto, @Req() req) {
+    return this.service.create(dto, req.user);
   }
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
@@ -56,7 +57,8 @@ export class ResourceController {
 
     @Body()
     dto: UpdateResourceDto,
+    @Req() req,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, req.user);
   }
 }

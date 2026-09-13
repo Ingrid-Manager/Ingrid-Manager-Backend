@@ -62,8 +62,9 @@ export class RoomsController {
 
     @Body()
     dto: UpdateRoomDto,
+    @Req() req,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, req.user);
   }
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
@@ -74,7 +75,7 @@ export class RoomsController {
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: Room['id']): Promise<void> {
-    return this.service.remove(id);
+  remove(@Param('id') id: Room['id'], @Req() req): Promise<void> {
+    return this.service.remove(id, req.user);
   }
 }

@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { RoomsService } from './rooms.service';
 import { Room } from './infrastructure/relational/persistence/entities/room.entity';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 describe('RoomsService', () => {
   let service: RoomsService;
@@ -18,6 +19,14 @@ describe('RoomsService', () => {
             save: jest.fn(),
             findOne: jest.fn(),
             find: jest.fn(),
+          },
+        },
+        {
+          provide: AuditLogService,
+          useValue: {
+            log: jest.fn().mockResolvedValue(undefined),
+            getUserLabel: jest.fn().mockResolvedValue('Anna Beispiel'),
+            diff: jest.fn().mockReturnValue({}),
           },
         },
       ],
