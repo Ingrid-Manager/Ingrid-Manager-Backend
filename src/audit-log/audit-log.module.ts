@@ -5,12 +5,13 @@ import { AuditLog } from './infrastructure/relational/persistence/entities/audit
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { AuditLogService } from './audit-log.service';
 import { AuditLogController } from './audit-log.controller';
+import { AuditErrorFilter } from './filters/audit-error.filter';
 
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature([AuditLog, UserEntity])],
-  providers: [AuditLogService],
+  providers: [AuditLogService, AuditErrorFilter],
   controllers: [AuditLogController],
-  exports: [AuditLogService],
+  exports: [AuditLogService, AuditErrorFilter],
 })
 export class AuditLogModule {}
