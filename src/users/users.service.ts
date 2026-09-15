@@ -20,6 +20,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 function userDisplayLabel(user: {
   firstName?: string | null;
@@ -135,6 +136,7 @@ export class UsersService {
         user: { id: actingUser.id },
         userLabel,
         action: AuditAction.CREATE,
+        service: AuditService.USERS,
         entityType: AuditEntityType.USER,
         entityId: created.id,
         summary: `${userLabel} hat Nutzer "${userDisplayLabel(created)}" angelegt`,
@@ -342,6 +344,7 @@ export class UsersService {
         user: { id: actingUserId },
         userLabel: actingLabel,
         action: AuditAction.USER_ACTIVATED,
+        service: AuditService.USERS,
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat Nutzer "${targetLabel}" freigeschaltet`,
@@ -362,6 +365,7 @@ export class UsersService {
         user: { id: actingUserId },
         userLabel: actingLabel,
         action: AuditAction.ROLE_CHANGED,
+        service: AuditService.USERS,
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat die Berechtigung von "${targetLabel}" von ${oldRoleName} zu ${newRoleName} geändert`,
@@ -380,6 +384,7 @@ export class UsersService {
         user: { id: actingUserId },
         userLabel: actingLabel,
         action: AuditAction.UPDATE,
+        service: AuditService.USERS,
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat Nutzer "${targetLabel}" bearbeitet`,
@@ -408,6 +413,7 @@ export class UsersService {
         user: { id: actingUser.id },
         userLabel: actingLabel,
         action: AuditAction.DELETE,
+        service: AuditService.USERS,
         entityType: AuditEntityType.USER,
         entityId: id,
         summary: `${actingLabel} hat Nutzer "${targetLabel}" deaktiviert (Soft-Delete)`,

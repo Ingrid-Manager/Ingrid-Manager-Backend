@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { AuditLog } from './infrastructure/relational/persistence/entities/audit-log.entity';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { AuditAction } from './audit-action.enum';
+import { AuditService } from './audit-service.enum';
 import { AuditLogFilterDto } from './application/dto/audit-log-filter.dto';
 
 export interface AuditLogUser {
@@ -17,6 +18,8 @@ export interface AuditLogUser {
 export interface AuditLogParams {
   user: AuditLogUser | null;
   action: AuditAction;
+  /** Fachliches Modul, dem diese Aktion zuzuordnen ist (für die Filterleiste im Admin-Frontend). */
+  service: AuditService;
   entityType: string;
   entityId: number | string | null;
   summary: string;
@@ -61,6 +64,7 @@ export class AuditLogService {
         userId: params.user?.id ?? null,
         userLabel,
         action: params.action,
+        service: params.service,
         entityType: params.entityType,
         entityId:
           params.entityId === null || params.entityId === undefined
@@ -123,6 +127,10 @@ export class AuditLogService {
 
     if (filter.userId) {
       qb.andWhere('log.userId = :userId', { userId: filter.userId });
+    }
+
+    if (filter.service) {
+      qb.andWhere('log.service = :service', { service: filter.service });
     }
 
     if (filter.entityType) {

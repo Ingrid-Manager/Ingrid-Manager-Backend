@@ -9,12 +9,17 @@ import {
   Min,
 } from 'class-validator';
 import { AuditAction } from '../../audit-action.enum';
+import { AuditService } from '../../audit-service.enum';
 
 export class AuditLogFilterDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   userId?: number;
+
+  @IsOptional()
+  @IsEnum(AuditService)
+  service?: AuditService;
 
   @IsOptional()
   @IsString()

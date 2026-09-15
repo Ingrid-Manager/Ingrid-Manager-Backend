@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { UserRepository } from './infrastructure/persistence/user.repository';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { RoleEnum } from '../roles/roles.enum';
 
@@ -75,6 +76,7 @@ describe('UsersService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.USER_ACTIVATED,
+        service: AuditService.USERS,
         entityId: 7,
       }),
     );
@@ -106,6 +108,7 @@ describe('UsersService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.ROLE_CHANGED,
+        service: AuditService.USERS,
         entityId: 8,
         changes: {
           role: { old: RoleEnum.user, new: RoleEnum.verwaltung },
@@ -144,6 +147,7 @@ describe('UsersService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.ROLE_CHANGED,
+        service: AuditService.USERS,
         changes: {
           firstName: { old: 'Erika', new: 'Erika-Neu' },
           role: { old: RoleEnum.user, new: RoleEnum.verwaltung },
@@ -175,7 +179,11 @@ describe('UsersService', () => {
     );
 
     expect(auditLogService.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: AuditAction.UPDATE, entityId: 9 }),
+      expect.objectContaining({
+        action: AuditAction.UPDATE,
+        service: AuditService.USERS,
+        entityId: 9,
+      }),
     );
   });
 });

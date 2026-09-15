@@ -9,10 +9,12 @@ import {
 } from 'typeorm';
 import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
 import { AuditAction } from '../../../../audit-action.enum';
+import { AuditService } from '../../../../audit-service.enum';
 
 @Index('IDX_AUDITLOG_ENTITY', ['entityType', 'entityId'])
 @Index('IDX_AUDITLOG_CREATED_AT', ['createdAt'])
 @Index('IDX_AUDITLOG_USER', ['userId'])
+@Index('IDX_AUDITLOG_SERVICE', ['service'])
 @Entity('auditlog')
 export class AuditLog {
   @PrimaryGeneratedColumn()
@@ -38,6 +40,12 @@ export class AuditLog {
 
   @Column({ type: 'varchar', comment: 'Art der Aktion' })
   action!: AuditAction;
+
+  @Column({
+    type: 'varchar',
+    comment: 'Fachliches Modul, z.B. events, resources, auth',
+  })
+  service!: AuditService;
 
   @Column({ comment: 'Betroffener Entitätstyp, z.B. calendar-event' })
   entityType!: string;

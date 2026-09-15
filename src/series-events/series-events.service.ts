@@ -19,6 +19,7 @@ import { UpdateSeriesEventDto } from './application/dto/update-series-event.dto'
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class SeriesEventsService {
@@ -72,6 +73,7 @@ export class SeriesEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Serientermin "${saved.title}" angelegt`,
@@ -236,6 +238,7 @@ export class SeriesEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.SERIES_MODIFIED,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: series.id,
       summary: `${userLabel} hat Serientermin "${series.title}" ab dem ${splitDate.toLocaleDateString('de-DE')} geteilt/angepasst`,
@@ -288,6 +291,7 @@ export class SeriesEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Serientermin "${saved.title}" bearbeitet`,
@@ -334,6 +338,7 @@ export class SeriesEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: series.id,
       summary: `${userLabel} hat Serientermin "${series.title}" samt aller Einzeltermine gelöscht`,

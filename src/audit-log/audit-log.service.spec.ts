@@ -5,16 +5,36 @@ import { AuditLogService } from './audit-log.service';
 import { AuditLog } from './infrastructure/relational/persistence/entities/audit-log.entity';
 import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { AuditAction } from './audit-action.enum';
+import { AuditService } from './audit-service.enum';
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
-  let auditLogRepository: { create: jest.Mock; save: jest.Mock };
+  let auditLogRepository: {
+    create: jest.Mock;
+    save: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
   let userRepository: { findOne: jest.Mock };
+  let mockQueryBuilder: {
+    orderBy: jest.Mock;
+    andWhere: jest.Mock;
+    skip: jest.Mock;
+    take: jest.Mock;
+    getManyAndCount: jest.Mock;
+  };
 
   beforeEach(async () => {
+    mockQueryBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
     auditLogRepository = {
       create: jest.fn((data) => data),
       save: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => mockQueryBuilder),
     };
     userRepository = {
       findOne: jest.fn(),
@@ -85,6 +105,7 @@ describe('AuditLogService', () => {
       await service.log({
         user: null,
         action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.SYSTEM,
         entityType: 'system',
         entityId: null,
         summary: 'Testfehler',
@@ -94,6 +115,7 @@ describe('AuditLogService', () => {
       const saved = auditLogRepository.create.mock.calls[0][0];
       expect(saved.userLabel).toBe('System');
       expect(saved.userId).toBeNull();
+      expect(saved.service).toBe(AuditService.SYSTEM);
     });
 
     it('loads the display name via withDeleted when only the id is given', async () => {
@@ -107,6 +129,7 @@ describe('AuditLogService', () => {
       await service.log({
         user: { id: 3 },
         action: AuditAction.CREATE,
+        service: AuditService.EVENTS,
         entityType: 'calendar-event',
         entityId: 1,
         summary: 'Test',
@@ -126,6 +149,7 @@ describe('AuditLogService', () => {
         service.log({
           user: { id: 3 },
           action: AuditAction.CREATE,
+          service: AuditService.EVENTS,
           entityType: 'calendar-event',
           entityId: 1,
           summary: 'Test',
@@ -144,11 +168,32 @@ describe('AuditLogService', () => {
         service.log({
           user: null,
           action: AuditAction.SYSTEM_ERROR,
+          service: AuditService.SYSTEM,
           entityType: 'system',
           entityId: null,
           summary: 'Test',
         }),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('findAll', () => {
+    it('filters by service when given', async () => {
+      await service.findAll({ service: AuditService.AUTH } as any);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'log.service = :service',
+        { service: AuditService.AUTH },
+      );
+    });
+
+    it('does not add a service filter when none is given', async () => {
+      await service.findAll({} as any);
+
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
+        expect.stringContaining('log.service'),
+        expect.anything(),
+      );
     });
   });
 });

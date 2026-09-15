@@ -9,6 +9,7 @@ import { UpdateResourceDto } from './application/dto/update-resource.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class ResourceService {
@@ -27,6 +28,7 @@ export class ResourceService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.CREATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.RESOURCE,
       entityId: saved.id,
       summary: `${userLabel} hat Resource "${saved.title}" angelegt`,
@@ -85,6 +87,7 @@ export class ResourceService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.UPDATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.RESOURCE,
       entityId: saved.id,
       summary: `${userLabel} hat Resource "${saved.title}" bearbeitet`,

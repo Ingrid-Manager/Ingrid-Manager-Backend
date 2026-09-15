@@ -106,6 +106,7 @@ describe('ResourceEventsService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.CREATE,
+        service: AuditService.RESOURCES,
         summary: expect.stringContaining('Beamer reserviert'),
       }),
     );

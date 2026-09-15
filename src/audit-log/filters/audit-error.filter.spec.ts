@@ -9,6 +9,7 @@ import { BaseExceptionFilter } from '@nestjs/core';
 import { AuditErrorFilter } from './audit-error.filter';
 import { AuditLogService } from '../audit-log.service';
 import { AuditAction } from '../audit-action.enum';
+import { AuditService } from '../audit-service.enum';
 
 function createHost(user?: { id: number }): ArgumentsHost {
   return {
@@ -47,6 +48,7 @@ describe('AuditErrorFilter', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.SYSTEM,
         user: { id: 7 },
         summary: expect.stringContaining('Boom'),
       }),
@@ -57,7 +59,10 @@ describe('AuditErrorFilter', () => {
     await filter.catch(new Error('unexpected crash'), createHost());
 
     expect(auditLogService.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: AuditAction.SYSTEM_ERROR }),
+      expect.objectContaining({
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.SYSTEM,
+      }),
     );
   });
 

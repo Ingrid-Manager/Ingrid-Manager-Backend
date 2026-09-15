@@ -9,6 +9,7 @@ import { Category } from '../../categories/infrastructure/relational/persistence
 import { Room } from '../../rooms/infrastructure/relational/persistence/entities/room.entity';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditAction } from '../../audit-log/audit-action.enum';
+import { AuditService } from '../../audit-log/audit-service.enum';
 
 jest.mock('axios');
 
@@ -72,6 +73,7 @@ describe('HolidayReorganizationService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
         user: null,
         summary: 'System hat 2 Feiertage/Ferien importiert',
       }),
@@ -84,6 +86,7 @@ describe('HolidayReorganizationService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
         user: { id: 42 },
       }),
     );
@@ -95,7 +98,10 @@ describe('HolidayReorganizationService', () => {
     await expect(service.run()).rejects.toThrow('network down');
 
     expect(auditLogService.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: AuditAction.SYSTEM_ERROR }),
+      expect.objectContaining({
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.REORGANIZATION,
+      }),
     );
   });
 });

@@ -19,6 +19,7 @@ import { RoleEnum } from '../roles/roles.enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class ResourceEventsService {
@@ -80,6 +81,7 @@ export class ResourceEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.CREATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.RESOURCE_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Ressourcenbuchung "${saved.title}" angelegt`,
@@ -139,6 +141,7 @@ export class ResourceEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.UPDATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.RESOURCE_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Ressourcenbuchung "${saved.title}" bearbeitet`,
@@ -168,6 +171,7 @@ export class ResourceEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.DELETE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.RESOURCE_EVENT,
       entityId: event.id,
       summary: `${userLabel} hat Ressourcenbuchung "${event.title}" gelöscht (Soft-Delete)`,

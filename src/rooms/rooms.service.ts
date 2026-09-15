@@ -9,6 +9,7 @@ import { UpdateRoomDto } from './application/dto/update-room.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class RoomsService {
@@ -30,6 +31,7 @@ export class RoomsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.CREATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.ROOM,
       entityId: saved.id,
       summary: `${userLabel} hat Raum "${saved.title}" angelegt`,
@@ -96,6 +98,7 @@ export class RoomsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.UPDATE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.ROOM,
       entityId: saved.id,
       summary: `${userLabel} hat Raum "${saved.title}" bearbeitet`,
@@ -115,6 +118,7 @@ export class RoomsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.DELETE,
+      service: AuditService.RESOURCES,
       entityType: AuditEntityType.ROOM,
       entityId: id,
       summary: `${userLabel} hat Raum "${room?.title ?? id}" gelöscht (Soft-Delete)`,

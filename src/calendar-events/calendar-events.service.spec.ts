@@ -7,6 +7,7 @@ import { CalendarEvent } from './infrastructure/relational/persistence/entities/
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 describe('CalendarEventsService', () => {
   let service: CalendarEventsService;
@@ -75,6 +76,7 @@ describe('CalendarEventsService', () => {
       expect.objectContaining({
         user: { id: 42 },
         action: AuditAction.CREATE,
+        service: AuditService.EVENTS,
         entityType: AuditEntityType.CALENDAR_EVENT,
         summary: expect.stringContaining('Teamsitzung'),
       }),
@@ -98,6 +100,7 @@ describe('CalendarEventsService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.UPDATE,
+        service: AuditService.EVENTS,
         entityType: AuditEntityType.CALENDAR_EVENT,
         entityId: 7,
       }),
@@ -137,6 +140,7 @@ describe('CalendarEventsService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.DELETE,
+        service: AuditService.EVENTS,
         entityType: AuditEntityType.CALENDAR_EVENT,
         entityId: 9,
         summary: expect.stringContaining('gelöscht'),

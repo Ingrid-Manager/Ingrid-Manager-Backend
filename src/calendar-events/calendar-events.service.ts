@@ -17,6 +17,7 @@ import { HeatingCalendarEventsDto } from './application/dto/heating-calendar-eve
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class CalendarEventsService {
@@ -75,6 +76,7 @@ export class CalendarEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
@@ -164,6 +166,7 @@ export class CalendarEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Termin "${saved.title}" bearbeitet`,
@@ -201,6 +204,7 @@ export class CalendarEventsService {
       user: { id: user.id },
       userLabel,
       action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: event.id,
       summary: `${userLabel} hat Termin "${event.title}" gelöscht (Soft-Delete)`,

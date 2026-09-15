@@ -11,6 +11,7 @@ import { MailService } from '../mail/mail.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 import authConfig from './config/auth.config';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { RoleEnum } from '../roles/roles.enum';
@@ -105,6 +106,7 @@ describe('AuthService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.LOGIN,
+        service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         ip: '127.0.0.1',
         userAgent: 'jest-agent',
@@ -126,6 +128,7 @@ describe('AuthService', () => {
     const loggedEntry = auditLogService.log.mock.calls[0][0];
 
     expect(loggedEntry.action).toBe(AuditAction.LOGIN_FAILED);
+    expect(loggedEntry.service).toBe(AuditService.AUTH);
     expect(loggedEntry.user).toBeNull();
     expect(loggedEntry.summary).toContain('unknown@example.com');
     expect(JSON.stringify(loggedEntry)).not.toContain('super-secret-pw');
@@ -149,6 +152,7 @@ describe('AuthService', () => {
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.REGISTERED,
+        service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         entityId: 5,
       }),

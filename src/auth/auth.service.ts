@@ -33,6 +33,7 @@ import authConfig from './config/auth.config';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class AuthService {
@@ -124,6 +125,7 @@ export class AuthService {
         user: { id: Number(user.id) },
         userLabel,
         action: AuditAction.LOGIN,
+        service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         entityId: user.id,
         summary: `${userLabel} hat sich erfolgreich angemeldet`,
@@ -144,6 +146,7 @@ export class AuthService {
         await this.auditLogService.log({
           user: null,
           action: AuditAction.LOGIN_FAILED,
+          service: AuditService.AUTH,
           entityType: AuditEntityType.AUTH,
           entityId: null,
           summary: `Fehlgeschlagener Login-Versuch für "${loginDto.email}"`,
@@ -178,6 +181,7 @@ export class AuthService {
       user: { id: Number(user.id) },
       userLabel,
       action: AuditAction.REGISTERED,
+      service: AuditService.AUTH,
       entityType: AuditEntityType.AUTH,
       entityId: user.id,
       summary: `${userLabel} hat sich registriert`,
@@ -286,6 +290,7 @@ export class AuthService {
       user: { id: Number(user.id) },
       userLabel,
       action: AuditAction.PASSWORD_RESET_REQUESTED,
+      service: AuditService.AUTH,
       entityType: AuditEntityType.AUTH,
       entityId: user.id,
       summary: `${userLabel} hat einen Passwort-Reset angefordert`,
@@ -341,6 +346,7 @@ export class AuthService {
       user: { id: Number(user.id) },
       userLabel,
       action: AuditAction.PASSWORD_CHANGED,
+      service: AuditService.AUTH,
       entityType: AuditEntityType.AUTH,
       entityId: user.id,
       summary: `${userLabel} hat das Passwort per Reset-Link geändert`,
@@ -436,6 +442,7 @@ export class AuthService {
         user: { id: Number(currentUser.id) },
         userLabel,
         action: AuditAction.PASSWORD_CHANGED,
+        service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         entityId: currentUser.id,
         summary: `${userLabel} hat das Passwort geändert`,
@@ -506,6 +513,7 @@ export class AuthService {
         user: { id: Number(data.userId) },
         userLabel,
         action: AuditAction.LOGOUT,
+        service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         entityId: data.userId,
         summary: `${userLabel} hat sich abgemeldet`,

@@ -10,6 +10,7 @@ import { Room } from '../../rooms/infrastructure/relational/persistence/entities
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditAction } from '../../audit-log/audit-action.enum';
 import { AuditEntityType } from '../../audit-log/audit-entity-type.enum';
+import { AuditService } from '../../audit-log/audit-service.enum';
 
 export interface ReorganizationActingUser {
   id: number;
@@ -43,6 +44,7 @@ export class HolidayReorganizationService {
       await this.auditLogService.log({
         user: null,
         action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.REORGANIZATION,
         entityType: AuditEntityType.SYSTEM,
         entityId: null,
         summary: `Ferien-Import fehlgeschlagen: ${(error as Error).message}`,
@@ -149,6 +151,7 @@ export class HolidayReorganizationService {
         user: { id: user.id },
         userLabel,
         action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
         entityType: AuditEntityType.SYSTEM,
         entityId: null,
         summary: `${userLabel} hat den Ferien-Import manuell ausgelöst (${allEvents.length} importiert)`,
@@ -157,6 +160,7 @@ export class HolidayReorganizationService {
       await this.auditLogService.log({
         user: null,
         action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
         entityType: AuditEntityType.SYSTEM,
         entityId: null,
         summary: `System hat ${allEvents.length} Feiertage/Ferien importiert`,

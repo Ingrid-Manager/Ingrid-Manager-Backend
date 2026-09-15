@@ -11,6 +11,7 @@ import { BaseExceptionFilter } from '@nestjs/core';
 import { AuditLogService } from '../audit-log.service';
 import { AuditAction } from '../audit-action.enum';
 import { AuditEntityType } from '../audit-entity-type.enum';
+import { AuditService } from '../audit-service.enum';
 
 /**
  * Ergänzt die bestehende Fehlerbehandlung um ein kurzes Audit-Log für echte
@@ -63,6 +64,7 @@ export class AuditErrorFilter extends BaseExceptionFilter {
     await this.auditLogService.log({
       user: requestUser?.id ? { id: requestUser.id } : null,
       action: AuditAction.SYSTEM_ERROR,
+      service: AuditService.SYSTEM,
       entityType: AuditEntityType.SYSTEM,
       entityId: null,
       summary: `${message} (${request?.method ?? '?'} ${request?.url ?? '?'})`,
