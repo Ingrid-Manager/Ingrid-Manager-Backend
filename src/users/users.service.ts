@@ -290,13 +290,7 @@ export class UsersService {
       socialId: updateUserDto.socialId,
     });
 
-    await this.logUserUpdate(
-      id,
-      beforeUser,
-      updateUserDto,
-      currentUser,
-      updated,
-    );
+    await this.logUserUpdate(id, beforeUser, updateUserDto, currentUser);
 
     return updated;
   }
@@ -306,16 +300,26 @@ export class UsersService {
     beforeUser: NullableType<User>,
     updateUserDto: UpdateUserDto,
     currentUser: User,
-    updated: NullableType<User>,
   ): Promise<void> {
     const actingUserId = Number(currentUser.id);
     const actingLabel = await this.auditLogService.getUserLabel({
       id: actingUserId,
     });
-    const targetSource = updated ?? beforeUser;
-    const targetLabel = targetSource
-      ? userDisplayLabel({ ...targetSource, id })
-      : `User #${id}`;
+    // Bewusst NICHT einfach `updated` nehmen: UserRepository.update()
+    // baut die Payload per {...currentEntity, ...payload} und payload
+    // enthält bei einer reinen Rollen-/Status-Änderung (z.B. aus
+    // Users.vue) firstName/lastName/email als literal `undefined` (im
+    // DTO nicht mitgeschickt) - das überschreibt beim Spreaden den
+    // vorher gültigen Namen auf `updated`, wodurch userDisplayLabel()
+    // mangels Namen auf "User #<id>" zurückfällt. beforeUser stammt
+    // direkt aus der DB und hat den Namen zuverlässig; nur wirklich im
+    // DTO mitgeschickte Werte sollen ihn überschreiben.
+    const targetLabel = userDisplayLabel({
+      id,
+      firstName: updateUserDto.firstName ?? beforeUser?.firstName,
+      lastName: updateUserDto.lastName ?? beforeUser?.lastName,
+      email: updateUserDto.email ?? beforeUser?.email,
+    });
 
     const wasNotActive =
       beforeUser?.status?.id === StatusEnum.pending ||
