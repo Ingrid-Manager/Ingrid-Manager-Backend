@@ -97,20 +97,67 @@ export class Baseline1783961759646 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`user\` ADD CONSTRAINT \`FK_dc18daa696860586ba4667a9d31\` FOREIGN KEY (\`statusId\`) REFERENCES \`status\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
-    await queryRunner.query(
-      `ALTER TABLE \`room\` ADD CONSTRAINT \`FK_f40ce90b5ffbc4b2e855b789dab\` FOREIGN KEY (\`createdbyid\`) REFERENCES \`user\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    await this.addForeignKeyIfNotExists(
+      queryRunner,
+      'room',
+      'FK_f40ce90b5ffbc4b2e855b789dab',
+      'ALTER TABLE `room` ADD CONSTRAINT `FK_f40ce90b5ffbc4b2e855b789dab` FOREIGN KEY (`createdbyid`) REFERENCES `user`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION',
     );
-    await queryRunner.query(
-      `ALTER TABLE \`calendarevent\` ADD CONSTRAINT \`FK_ba64df6b4e2420e2ae183c6db09\` FOREIGN KEY (\`seriesid\`) REFERENCES \`seriesevent\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    await this.addForeignKeyIfNotExists(
+      queryRunner,
+      'calendarevent',
+      'FK_ba64df6b4e2420e2ae183c6db09',
+      'ALTER TABLE `calendarevent` ADD CONSTRAINT `FK_ba64df6b4e2420e2ae183c6db09` FOREIGN KEY (`seriesid`) REFERENCES `seriesevent`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION',
     );
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE \`calendarevent\` DROP FOREIGN KEY \`FK_ba64df6b4e2420e2ae183c6db09\``,
+  /**
+   * Einige Umgebungen haben diese Fremdschlüssel bereits über eine ältere,
+   * nie eingecheckte Baseline-Migration direkt auf dem Server erhalten
+   * (siehe Baseline1784057005412, die nicht im Repo existiert). Damit diese
+   * Migration dort nicht mit "Duplicate foreign key constraint name"
+   * fehlschlägt, aber auf frischen Datenbanken trotzdem den Fremdschlüssel
+   * anlegt, wird der Ist-Zustand vorher geprüft.
+   */
+  private async addForeignKeyIfNotExists(
+    queryRunner: QueryRunner,
+    tableName: string,
+    constraintName: string,
+    sql: string,
+  ): Promise<void> {
+    const table = await queryRunner.getTable(tableName);
+    const exists = table?.foreignKeys.some((fk) => fk.name === constraintName);
+    if (!exists) {
+      await queryRunner.query(sql);
+    }
+  }
+
+  private async dropForeignKeyIfExists(
+    queryRunner: QueryRunner,
+    tableName: string,
+    constraintName: string,
+  ): Promise<void> {
+    const table = await queryRunner.getTable(tableName);
+    const foreignKey = table?.foreignKeys.find(
+      (fk) => fk.name === constraintName,
     );
-    await queryRunner.query(
-      `ALTER TABLE \`room\` DROP FOREIGN KEY \`FK_f40ce90b5ffbc4b2e855b789dab\``,
+    if (foreignKey) {
+      await queryRunner.query(
+        `ALTER TABLE \`${tableName}\` DROP FOREIGN KEY \`${constraintName}\``,
+      );
+    }
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await this.dropForeignKeyIfExists(
+      queryRunner,
+      'calendarevent',
+      'FK_ba64df6b4e2420e2ae183c6db09',
+    );
+    await this.dropForeignKeyIfExists(
+      queryRunner,
+      'room',
+      'FK_f40ce90b5ffbc4b2e855b789dab',
     );
     await queryRunner.query(
       `ALTER TABLE \`user\` DROP FOREIGN KEY \`FK_dc18daa696860586ba4667a9d31\``,
