@@ -11,7 +11,12 @@ import { AuditService } from '../audit-log/audit-service.enum';
 
 describe('CalendarEventsService', () => {
   let service: CalendarEventsService;
-  let auditLogService: { log: jest.Mock; getUserLabel: jest.Mock; diff: jest.Mock };
+  let auditLogService: {
+    log: jest.Mock;
+    getUserLabel: jest.Mock;
+    diff: jest.Mock;
+    snapshot: jest.Mock;
+  };
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -34,6 +39,7 @@ describe('CalendarEventsService', () => {
       log: jest.fn().mockResolvedValue(undefined),
       getUserLabel: jest.fn().mockResolvedValue('Anna Beispiel'),
       diff: jest.fn().mockReturnValue({}),
+      snapshot: jest.fn().mockReturnValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -83,7 +89,7 @@ describe('CalendarEventsService', () => {
     );
   });
 
-  it('logs an UPDATE entry with a diff when a calendar event is edited', async () => {
+  it('logs an UPDATE entry with a full snapshot when a calendar event is edited', async () => {
     const user = { id: 42, role: { id: 1, name: 'admin' } };
     mockRepository.findOne.mockResolvedValueOnce({
       id: 7,
@@ -96,7 +102,9 @@ describe('CalendarEventsService', () => {
 
     await service.update({ id: 7, title: 'Neues Meeting' } as any, user);
 
-    expect(auditLogService.diff).toHaveBeenCalled();
+    // snapshot() statt diff(): das Protokoll soll immer den vollständigen
+    // Termin zeigen (Datum/Raum/...), nicht nur die geänderten Felder.
+    expect(auditLogService.snapshot).toHaveBeenCalled();
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.UPDATE,
@@ -137,6 +145,7 @@ describe('CalendarEventsService', () => {
     await service.delete(9, user);
 
     expect(mockRepository.softDelete).toHaveBeenCalledWith(9);
+    expect(auditLogService.snapshot).toHaveBeenCalled();
     expect(auditLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.DELETE,

@@ -281,9 +281,25 @@ export class SeriesEventsService {
       throw new NotFoundException('Series not found');
     }
 
+    const updateData: Record<string, unknown> = { ...dto };
+
+    // dto.seriesStart/seriesEnd sind (durch @IsDateString() validierte)
+    // Strings, entity.seriesStart/seriesEnd aber echte Date-Objekte -
+    // ohne Umwandlung würde Object.assign() das Entity-Feld mit einem
+    // String überschreiben statt einem Date, und der Audit-Log-Vergleich
+    // unten würde die Felder selbst dann als "geändert" ausweisen, wenn
+    // sich der Zeitraum nicht geändert hat (siehe dieselbe Korrektur in
+    // CalendarEventsService.update).
+    if (typeof updateData.seriesStart === 'string') {
+      updateData.seriesStart = new Date(updateData.seriesStart);
+    }
+    if (typeof updateData.seriesEnd === 'string') {
+      updateData.seriesEnd = new Date(updateData.seriesEnd);
+    }
+
     const before = { ...entity };
 
-    Object.assign(entity, dto);
+    Object.assign(entity, updateData);
 
     const saved = await this.repo.save(entity);
 
@@ -296,7 +312,10 @@ export class SeriesEventsService {
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Serientermin "${saved.title}" bearbeitet`,
-      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+      // snapshot() statt diff(): zeigt immer alle Konfigurationsfelder,
+      // nicht nur die geänderten - siehe dieselbe Begründung in
+      // CalendarEventsService.update.
+      changes: this.auditLogService.snapshot(before, updateData),
     });
 
     return saved;
@@ -343,6 +362,9 @@ export class SeriesEventsService {
       entityType: AuditEntityType.SERIES_EVENT,
       entityId: series.id,
       summary: `${userLabel} hat Serientermin "${series.title}" samt aller Einzeltermine gelöscht`,
+      // Voller Datensatz der gelöschten Serie, aus demselben Grund wie
+      // beim Löschen eines Einzeltermins (siehe CalendarEventsService).
+      changes: this.auditLogService.snapshot({ ...series }, null),
     });
 
     return { success: true };

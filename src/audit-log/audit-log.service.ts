@@ -117,6 +117,38 @@ export class AuditLogService {
     return changes;
   }
 
+  /**
+   * Wie diff(), aber OHNE die Gleichheits-Filterung: enthält jedes Feld
+   * aus before/after, auch wenn sich der Wert nicht geändert hat. Für
+   * Fälle, in denen im Aktivitätsprotokoll immer der vollständige
+   * Datensatz sichtbar sein soll (z. B. Termine/Serientermine), damit
+   * sich nachvollziehen lässt, um welchen konkreten Termin es geht,
+   * auch wenn z. B. nur der Titel geändert wurde und Datum/Uhrzeit/Raum
+   * unverändert blieben.
+   */
+  snapshot(
+    before: Record<string, unknown> | null | undefined,
+    after: Record<string, unknown> | null | undefined,
+    ignoreFields: string[] = [],
+  ): Record<string, { old: unknown; new: unknown }> {
+    const ignored = new Set([...DEFAULT_IGNORED_DIFF_FIELDS, ...ignoreFields]);
+    const keys = new Set([
+      ...Object.keys(before ?? {}),
+      ...Object.keys(after ?? {}),
+    ]);
+    const fields: Record<string, { old: unknown; new: unknown }> = {};
+
+    for (const key of keys) {
+      if (ignored.has(key)) {
+        continue;
+      }
+
+      fields[key] = { old: before?.[key], new: after?.[key] };
+    }
+
+    return fields;
+  }
+
   async findAll(filter: AuditLogFilterDto) {
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 25, 100);

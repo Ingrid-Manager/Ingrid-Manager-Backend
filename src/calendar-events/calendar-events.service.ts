@@ -190,7 +190,12 @@ export class CalendarEventsService {
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Termin "${saved.title}" bearbeitet`,
-      changes: this.auditLogService.diff(before, updateData),
+      // snapshot() statt diff(): zeigt immer alle Felder (Datum, Raum,
+      // Kategorie, ...), nicht nur die tatsächlich geänderten - sonst
+      // lässt sich z. B. bei einer reinen Titeländerung eines
+      // Serientermins nicht mehr nachvollziehen, um welchen konkreten
+      // Termin (welches Datum) es überhaupt ging.
+      changes: this.auditLogService.snapshot(before, updateData),
     });
 
     return saved;
@@ -228,6 +233,10 @@ export class CalendarEventsService {
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: event.id,
       summary: `${userLabel} hat Termin "${event.title}" gelöscht (Soft-Delete)`,
+      // Voller Datensatz des gelöschten Termins, aus demselben Grund wie
+      // bei update(): sonst bleibt im Protokoll nur der Titel übrig, um
+      // den gelöschten Termin zu identifizieren.
+      changes: this.auditLogService.snapshot({ ...event }, null),
     });
 
     return { success: true };
