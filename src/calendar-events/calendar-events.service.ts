@@ -80,6 +80,7 @@ export class CalendarEventsService {
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
+      changes: this.auditLogService.diff(null, { ...dto } as Record<string, unknown>),
     });
 
     return saved;
