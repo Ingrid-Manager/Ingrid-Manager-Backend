@@ -161,6 +161,20 @@ export class CalendarEventsService {
     const updateData: Record<string, unknown> = { ...dto };
     delete updateData.createdbyid;
 
+    // dto.start/dto.end sind (durch @IsDateString() validierte) Strings,
+    // event.start/event.end auf dem Entity aber echte Date-Objekte. Ohne
+    // diese Umwandlung würde Object.assign() das Entity-Feld mit einem
+    // String überschreiben statt einem Date, und der Audit-Log-Diff
+    // unten würde start/end selbst dann als "geändert" ausweisen, wenn
+    // der Termin unverändert blieb (Date- vs. String-Serialisierung von
+    // JSON.stringify unterscheidet sich, auch bei identischem Zeitpunkt).
+    if (typeof updateData.start === 'string') {
+      updateData.start = new Date(updateData.start);
+    }
+    if (typeof updateData.end === 'string') {
+      updateData.end = new Date(updateData.end);
+    }
+
     const before = { ...event };
 
     Object.assign(event, updateData);
