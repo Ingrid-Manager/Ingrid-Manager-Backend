@@ -143,14 +143,20 @@ export class OwnershipTransferService {
       throw new NotFoundException(`Termin #${eventId} wurde nicht gefunden.`);
     }
 
+    // Termine, die zu einer Serie gehören, dürfen hier nicht einzeln
+    // übertragen werden: seriesevent.createdbyid und die restlichen
+    // calendarevent-Zeilen der Serie blieben sonst beim alten Besitzer,
+    // was zu widersprüchlichen Besitzerständen innerhalb derselben Serie
+    // führen kann. Für so einen Termin muss die ganze Serie (seriesId)
+    // übertragen werden.
+    if (event.seriesid) {
+      throw new BadRequestException(
+        `Termin #${eventId} gehört zu Serientermin #${event.seriesid} und kann nicht einzeln übertragen werden. Bitte die gesamte Serie übertragen (seriesId).`,
+      );
+    }
+
     const oldOwnerId = event.createdbyid;
     event.createdbyid = newOwnerId;
-
-    // Einzelner Termin aus einer Serie: gilt jetzt als manuell abweichend,
-    // genau wie bei jeder anderen manuellen Bearbeitung eines Serientermins.
-    if (event.seriesid) {
-      event.isModified = true;
-    }
 
     await this.calendarRepo.save(event);
 
