@@ -7,4 +7,5 @@ export class SettingsDto {
   techFirstName: string;
   techLastName: string;
   techEmail: string;
+  smtpUser: string;
 }
