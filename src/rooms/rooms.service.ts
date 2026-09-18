@@ -111,6 +111,10 @@ export class RoomsService {
   async remove(id: Room['id'], user: any) {
     const room = await this.repo.findOne({ where: { id } });
 
+    if (!room) {
+      throw new NotFoundException(`Raum mit id ${id} nicht gefunden`);
+    }
+
     await this.repo.softDelete(id);
 
     const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
@@ -121,7 +125,7 @@ export class RoomsService {
       service: AuditService.RESOURCES,
       entityType: AuditEntityType.ROOM,
       entityId: id,
-      summary: `${userLabel} hat Raum "${room?.title ?? id}" gelöscht (Soft-Delete)`,
+      summary: `${userLabel} hat Raum "${room.title}" gelöscht (Soft-Delete)`,
     });
   }
 }
