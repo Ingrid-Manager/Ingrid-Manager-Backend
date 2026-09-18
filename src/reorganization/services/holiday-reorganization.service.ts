@@ -23,6 +23,9 @@ export interface ReorganizationActingUser {
 export class HolidayReorganizationService {
   private readonly logger = new Logger(HolidayReorganizationService.name);
 
+  // Feste Kategorie-ID für importierte Feiertage/Ferien (siehe importOpenHolidays unten).
+  private static readonly HOLIDAY_CATEGORY_ID = 9999;
+
   constructor(
     @InjectRepository(CalendarEvent)
     private readonly calendarEventRepository: Repository<CalendarEvent>,
@@ -54,6 +57,21 @@ export class HolidayReorganizationService {
     }
   }
 
+  /** Alle aktuell importierten Feiertage/Ferien, für die Admin-Übersicht. */
+  async list() {
+    const holidays = await this.calendarEventRepository.find({
+      where: { categoryid: HolidayReorganizationService.HOLIDAY_CATEGORY_ID },
+      order: { start: 'ASC' },
+    });
+
+    return holidays.map((holiday) => ({
+      id: holiday.id,
+      title: holiday.title,
+      start: holiday.start,
+      end: holiday.end,
+    }));
+  }
+
   private async importOpenHolidays(
     user?: ReorganizationActingUser | null,
   ): Promise<void> {
@@ -63,7 +81,7 @@ export class HolidayReorganizationService {
 
     const holidayCategory = await this.categoryRepository.findOne({
       where: {
-        id: 9999,
+        id: HolidayReorganizationService.HOLIDAY_CATEGORY_ID,
       },
     });
 

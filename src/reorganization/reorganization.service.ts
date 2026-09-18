@@ -26,4 +26,8 @@ export class ReorganizationService {
 
     return { success: true };
   }
+
+  async listHolidays() {
+    return this.holidayReorganizationService.list();
+  }
 }

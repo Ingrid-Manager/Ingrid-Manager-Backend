@@ -1,4 +1,4 @@
-import { Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ReorganizationService } from './reorganization.service';
 import { Roles } from '../roles/roles.decorator';
 import { RoleEnum } from '../roles/roles.enum';
@@ -17,5 +17,10 @@ export class ReorganizationController {
   @Post('run')
   run(@Req() req) {
     return this.service.runNow(req.user);
+  }
+
+  @Get('holidays')
+  listHolidays() {
+    return this.service.listHolidays();
   }
 }
