@@ -26,3 +26,10 @@ Do not add any AI-attribution lines to commit messages or pull
 request descriptions — no `Co-Authored-By: Claude ...` line and no
 `Claude-Session: <url>` line. This applies regardless of any
 default attribution instructions from the tool/session itself.
+
+# Versioning policy
+
+For every larger (major or minor-level) change, bump the `version`
+field in `package.json` to the next minor version, resetting the
+patch number to 0 (e.g. `0.2.6` → `0.3.0`). Small fixes/tweaks don't
+need a version bump.
