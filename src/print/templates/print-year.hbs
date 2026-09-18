@@ -199,13 +199,18 @@
       overflow: hidden;
     }
     .ev {
+      /* flex + align-items: center statt nur line-height: der Text war
+         innerhalb des farbigen Hintergrunds nicht vertikal zentriert
+         (Schrift-Metriken bei dieser winzigen Schriftgröße machen sich
+         mit reinem line-height bemerkbar). Das Ellipsis-Truncating
+         wandert dafür auf das innere .ev-text-Span, da text-overflow
+         auf einem Flex-Container selbst nicht funktioniert. */
+      display: flex;
+      align-items: center;
       border-radius: 2.5px;
       font-size: 5.5pt;
       line-height: 1.25;
       padding: .5px 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       /* Begrenzung auf die Zellbreite: durch align-items: flex-start
          oben schrumpft die Box zwar auf ihren Inhalt, ohne max-width
          könnte ein sehr langer Titel sie aber trotzdem über den
@@ -213,6 +218,12 @@
          abgeschnitten zu werden. */
       max-width: 100%;
       flex-shrink: 0;
+    }
+    .ev-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
     }
     .ev-more {
       font-size: 5pt;
@@ -226,16 +237,14 @@
        Titelende), nicht den ganzen restlichen Platz der Kopfzeile
        ausfüllen. flex-shrink: 1 + min-width: 0 sorgen dafür, dass ein zu
        langer Titel trotzdem innerhalb der Zelle bleibt und per Ellipsis
-       abgeschnitten wird. Selektor über .day-cell-header statt nur
-       .ev-side, damit die Regel unabhängig von der Deklarations-
-       reihenfolge auch das flex-shrink: 0 von .ev bzw. .ev-more
-       überschreibt. */
+       abgeschnitten wird (Truncating selbst passiert im inneren
+       .ev-text-Span, siehe .ev-Regel). Selektor über .day-cell-header
+       statt nur .ev-side, damit die Regel unabhängig von der
+       Deklarationsreihenfolge auch das flex-shrink: 0 von .ev bzw.
+       .ev-more überschreibt. */
     .day-cell-header .ev-side {
       flex: 0 1 auto;
       min-width: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     /* ─── Footer ──────────────────────────────────────────────── */
@@ -363,7 +372,14 @@
         el.style.backgroundColor = ev.roomColor;
         el.style.color = ev.roomTextColor || '#1a252f';
       }
-      el.textContent = ev.title;
+      // Text in ein eigenes Span statt direkt als textContent auf .ev:
+      // .ev ist jetzt ein Flex-Container (für die vertikale Zentrierung),
+      // und text-overflow: ellipsis funktioniert nicht auf dem Flex-
+      // Container selbst, nur auf einem Kind-Element (siehe .ev-text).
+      const text = document.createElement('span');
+      text.className = 'ev-text';
+      text.textContent = ev.title;
+      el.appendChild(text);
       el.title = ev.title;
     }
 
