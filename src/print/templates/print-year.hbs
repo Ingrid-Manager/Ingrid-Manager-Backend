@@ -137,8 +137,12 @@
       border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
       /* Reduziert von 1mm 1.5mm: die Tageszahl hatte auf allen Seiten
-         unnötig viel Luft, obwohl der Platz in der Zelle knapp ist. */
-      padding: .5mm 1mm;
+         unnötig viel Luft, obwohl der Platz in der Zelle knapp ist.
+         Unten bewusst noch knapper (.15mm statt .5mm): bei 3 gestapelten
+         Terminen reichte der Platz bis zum unteren Zellenrand sonst nicht
+         ganz aus, wodurch der Hintergrund des untersten Termins leicht
+         vom overflow:hidden der Zelle abgeschnitten wurde. */
+      padding: .5mm 1mm .15mm;
       display: flex;
       flex-direction: column;
       min-width: 0;
@@ -189,8 +193,8 @@
          sich an ihrer Textlänge orientieren (Hintergrund endet am
          Titelende), statt immer die volle Zellbreite einzunehmen. */
       align-items: flex-start;
-      gap: .6mm;
-      margin-top: .4mm;
+      gap: .5mm;
+      margin-top: .3mm;
       min-height: 0;
       overflow: hidden;
     }
