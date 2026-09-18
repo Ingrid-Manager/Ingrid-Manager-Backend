@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../roles/roles.decorator';
 import { RoleEnum } from '../roles/roles.enum';
@@ -40,8 +40,12 @@ export class PrintController {
   @Post('print')
   async printCalendar(
     @Body() dto: PrintCalendarDto,
+    @Req() req,
   ): Promise<{ downloadUrl: string }> {
-    const downloadUrl = await this.printService.generateCalendarPdf(dto);
+    const downloadUrl = await this.printService.generateCalendarPdf(
+      dto,
+      req.user,
+    );
     return { downloadUrl };
   }
 }

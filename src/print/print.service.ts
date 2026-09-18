@@ -20,6 +20,10 @@ import {
 } from './print-fullcalendar-data';
 import { AllConfigType } from '../config/config.type';
 import { CalendarEventFilterDto } from '../calendar-events/application/dto/calendar-event-filter.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 interface ResolvedRange {
   start: Date;
@@ -55,6 +59,7 @@ export class PrintService {
     private readonly htmlCache: PrintHtmlCacheService,
     private readonly templates: PrintTemplateService,
     private readonly configService: ConfigService<AllConfigType>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /**
@@ -62,7 +67,10 @@ export class PrintService {
    * gibt die Download-URL zurück, unter der das fertige PDF DIREKT vom
    * PDF-Server (nicht über dieses Backend) abrufbar ist.
    */
-  async generateCalendarPdf(dto: PrintCalendarDto): Promise<string> {
+  async generateCalendarPdf(
+    dto: PrintCalendarDto,
+    user: { id: number },
+  ): Promise<string> {
     const range = this.resolveRange(dto.type, dto.date);
     const rooms = await this.resolveRooms(dto.roomIds);
     const roomIdSet = new Set(rooms.map((r) => r.id));
@@ -173,10 +181,35 @@ export class PrintService {
 
     const filename = `kalender-${this.safeFilenamePart(dto.type)}-${this.safeFilenamePart(dto.date)}`;
 
-    return this.remotePdfRenderer.renderUrlToDownloadUrl(printHtmlUrl, {
-      ...PDF_OPTIONS_BY_TYPE[dto.type],
-      filename,
+    const downloadUrl = await this.remotePdfRenderer.renderUrlToDownloadUrl(
+      printHtmlUrl,
+      {
+        ...PDF_OPTIONS_BY_TYPE[dto.type],
+        filename,
+      },
+    );
+
+    // Erst NACH erfolgreichem Rendern loggen - ein fehlgeschlagener Druck
+    // (z. B. externer PDF-Server nicht erreichbar) soll nicht als
+    // durchgeführter Druck im Protokoll erscheinen.
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    const roomTitles = rooms.map((r) => r.title).join(', ');
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CALENDAR_PRINTED,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.PRINT,
+      entityId: null,
+      summary: `${userLabel} hat den Kalender gedruckt (${range.rangeLabel}, Räume: ${roomTitles})`,
+      changes: this.auditLogService.diff(null, {
+        type: dto.type,
+        dateRangeLabel: range.rangeLabel,
+        rooms: roomTitles,
+      } as Record<string, unknown>),
     });
+
+    return downloadUrl;
   }
 
   /**

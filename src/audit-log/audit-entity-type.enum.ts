@@ -8,4 +8,5 @@ export enum AuditEntityType {
   USER = 'user',
   AUTH = 'auth',
   SYSTEM = 'system',
+  PRINT = 'print',
 }
