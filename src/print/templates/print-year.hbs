@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{orgName}} – Jahresansicht {{year}}</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       Design-Tokens  (identisch mit Monats- & Wochenansicht)
+    ════════════════════════════════════════════════════════════════ */
+    :root {
+      --border:  #d1d9e0;
+      --text:    #1f2937;
+      --muted:   #6b7280;
+      --accent:  #1a6fdb;
+      --today:   #fffbe6;
+      --other:   #f4f6f8;
+
+      --page-w: 420mm;
+      --page-h: 297mm;
+
+      font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #dde1e7; color: var(--text); }
+
+    /* ─── Toolbar ─────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: var(--page-w);
+      margin: 14px auto 0;
+      padding: 0 14px;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { background: #155bbf; }
+
+    /* ─── DIN A3 Seite ────────────────────────────────────────── */
+    .page {
+      width:  var(--page-w);
+      height: var(--page-h);
+      margin: 14px auto;
+      background: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,.14);
+      /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
+         für den eigentlichen Kalender. */
+      padding: 2mm 4mm 3mm;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5mm;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .page:last-of-type { page-break-after: avoid; }
+
+    /* ─── Kopfzeile ───────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 2.5mm;
+    }
+    .page-header h1 {
+      font-size: 16pt;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.2px;
+    }
+    .page-header .sub {
+      font-size: 8.5pt;
+      color: var(--muted);
+      margin-top: 1.5mm;
+    }
+    /* Logo vorerst deaktiviert (auf Kundenwunsch) — .logo-box-Regel und
+       das zugehörige Markup weiter unten bewusst entfernt, nicht nur
+       versteckt. Bei Bedarf einfach wieder ergänzen. */
+
+    /* ─── 3 Monate vertikal gestapelt ────────────────────────── */
+    .months-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 3mm;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+
+    /* ─── Einzelner Monat (horizontaler Streifen) ─────────────── */
+    .month-block {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: grid;
+      /* Titel-Spalte | 7 Wochentags-Spalten (Mo–So) */
+      grid-template-columns: 18mm repeat(7, minmax(0, 1fr));
+      /* minmax(0, 1fr) statt nur 1fr: verhindert, dass eine Spalte mit
+         vielen Terminen an einem Tag über ihren fairen Anteil hinaus
+         wächst und dadurch Wochen am Seitenende abschneidet (mit echten
+         Testdaten nachgewiesen — siehe Kommentar unten bei
+         MAX_STACKED_EVENTS). */
+      grid-template-rows: repeat(6, minmax(0, 1fr));
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    /* Monatsname — linke Spalte, alle 6 Zeilen */
+    .month-title {
+      grid-column: 1;
+      grid-row: 1 / 7;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9pt;
+      font-weight: 800;
+      letter-spacing: .3px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid rgba(255,255,255,.25);
+    }
+
+    /* Tages-Zellen — Spalten 2–8 (Mo–So), Zeilen 1–6 (Kalenderwochen) */
+    .day-cell {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      /* Reduziert von 1mm 1.5mm: die Tageszahl hatte auf allen Seiten
+         unnötig viel Luft, obwohl der Platz in der Zelle knapp ist. */
+      padding: .5mm 1mm;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      /* Harte Obergrenze (statt nur die Grid-Zeile per fr/minmax zu
+         verlassen): verhindert, dass eine terminreiche Zelle ihrer
+         Zeile mehr Höhe "abnimmt" als andere Zeilen, wodurch sonst
+         Wochen am Monats-/Seitenende unsichtbar abgeschnitten werden
+         können (mit echten Test-PDFs nachgewiesen). 12.8mm ≈ 1/6 der
+         Monatsblockhöhe auf einer A3-Seite mit 3 Monaten.
+      */
+      max-height: 12.8mm;
+      overflow: hidden;
+    }
+    /* letzte Wochentag-Spalte (So): kein rechter Rand (Klasse wird per JS gesetzt) */
+    .day-cell.last-col { border-right: none; }
+    /* unterste Zeile (letzte Kalenderwoche): kein unterer Rand */
+    .day-cell.last-row { border-bottom: none; }
+
+    /* Kopfzeile der Tageszelle: Tageszahl + (falls vorhanden) ein Termin
+       rechts daneben — nutzt den Freiraum neben der Zahl, statt ihn
+       ungenutzt zu lassen. */
+    .day-cell-header {
+      display: flex;
+      align-items: baseline;
+      gap: .8mm;
+      min-width: 0;
+      flex-shrink: 0;
+    }
+
+    .day-num {
+      font-size: 6.5pt;
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .day-cell.other-month .day-num { color: #b8c0cc; }
+    .day-cell.today { background: var(--today); }
+    .day-cell.today .day-num { color: var(--accent); }
+    .day-cell.weekend-day { background: #fafbfc; }
+
+    /* Events im Jahreskalender */
+    .day-events {
+      display: flex;
+      flex-direction: column;
+      /* flex-start statt des Default-"stretch": die Termin-Boxen sollen
+         sich an ihrer Textlänge orientieren (Hintergrund endet am
+         Titelende), statt immer die volle Zellbreite einzunehmen. */
+      align-items: flex-start;
+      gap: .6mm;
+      margin-top: .4mm;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .ev {
+      border-radius: 2.5px;
+      font-size: 5.5pt;
+      line-height: 1.25;
+      padding: .5px 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      /* Begrenzung auf die Zellbreite: durch align-items: flex-start
+         oben schrumpft die Box zwar auf ihren Inhalt, ohne max-width
+         könnte ein sehr langer Titel sie aber trotzdem über den
+         verfügbaren Platz hinaus breit machen, statt per Ellipsis
+         abgeschnitten zu werden. */
+      max-width: 100%;
+      flex-shrink: 0;
+    }
+    .ev-more {
+      font-size: 5pt;
+      color: var(--muted);
+      font-style: italic;
+      flex-shrink: 0;
+    }
+    /* Vierter Termin (oder der "+N weitere"-Hinweis, falls es noch mehr
+       sind) neben der Tageszahl. flex-grow: 0 (statt 1) — die Box soll
+       sich an der Textlänge orientieren (Hintergrund endet am
+       Titelende), nicht den ganzen restlichen Platz der Kopfzeile
+       ausfüllen. flex-shrink: 1 + min-width: 0 sorgen dafür, dass ein zu
+       langer Titel trotzdem innerhalb der Zelle bleibt und per Ellipsis
+       abgeschnitten wird. Selektor über .day-cell-header statt nur
+       .ev-side, damit die Regel unabhängig von der Deklarations-
+       reihenfolge auch das flex-shrink: 0 von .ev bzw. .ev-more
+       überschreibt. */
+    .day-cell-header .ev-side {
+      flex: 0 1 auto;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ─── Footer ──────────────────────────────────────────────── */
+    .page-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 2mm;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5mm;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2mm;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      padding: 1mm 2.5mm;
+      font-size: 7pt;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .info-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: var(--muted);
+    }
+    .info-line strong { color: var(--text); font-weight: 600; }
+
+    /* ─── Druck ───────────────────────────────────────────────── */
+    @page { size: A3 landscape; margin: 0; }
+
+    @media print {
+      body { background: white; }
+      .toolbar { display: none; }
+      .page {
+        width: 420mm;
+        height: 297mm;
+        margin: 0;
+        box-shadow: none;
+        padding: 2mm 4mm 3mm;
+        break-after: page;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">⬇ Als PDF drucken (4 Seiten)</button>
+  </div>
+
+  <div id="calendar-root"></div>
+
+  <script>
+  (function () {
+
+    const YEAR = {{year}};
+    const ORG_NAME = {{{orgNameJson}}};
+    const FRONTEND_DOMAIN = {{{frontendDomainJson}}};
+
+    const TODAY = new Date();
+    TODAY.setHours(0,0,0,0);
+
+    // ── Termine (vom Backend eingesetzt) ────────────────────────────
+    // Format: { date: 'YYYY-MM-DD', title: 'HH:mm Titel' | 'Titel' (ganztägig), roomColor: '#RRGGBB' }
+    const events = {{{eventsJson}}};
+
+    // ── Räume für die Fußzeilen-Legende (vom Backend eingesetzt) ────
+    const rooms = {{{roomsJson}}};
+
+    // Hilfsfunktion: HTML-Escaping als zusätzliche Absicherung für Stellen,
+    // an denen aus Layoutgründen weiterhin mit innerHTML/Template-Strings
+    // gearbeitet wird (Raumtitel/-farben stammen aus der Datenbank und
+    // könnten von Nutzer:innen frei vergeben worden sein — z. B. ein Raum
+    // namens "<img src=x onerror=alert(1)>" darf hier keinen Code ausführen).
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = String(value == null ? '' : value);
+      return div.innerHTML;
+    }
+
+    // Hilfsfunktionen
+    function ymd(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function buildEventMap(evts) {
+      const map = new Map();
+      evts.forEach(ev => {
+        if (!map.has(ev.date)) map.set(ev.date, []);
+        map.get(ev.date).push(ev);
+      });
+      return map;
+    }
+
+    const evMap = buildEventMap(events);
+
+    // Max. Termine, die direkt unter der Tageszahl gestapelt werden.
+    // Der Termin danach (also der vierte) wandert stattdessen neben die
+    // Zahl in die Kopfzeile (siehe .ev-side / .day-cell-header), alles
+    // ab dem fünften Termin wird dort zu "+N weitere" zusammengefasst.
+    // Seit die Kalenderwochen als Zeilen statt Zeilen als Wochentage
+    // angeordnet sind, ist eine Tageszelle ca. 12.8mm statt 11mm hoch
+    // (6 statt 7 Zeilen pro Monatsblock) — der zusätzliche Platz erlaubt
+    // 3 gestapelte Termine (insgesamt 4 sichtbare Termine pro Tag).
+    const MAX_STACKED_EVENTS = 3;
+
+    // Gemeinsame Formatierung für Termin-Elemente (neben der Zahl wie
+    // auch gestapelt): Raumfarbe als Hintergrund plus automatisch
+    // berechnete Kontrastfarbe (Schwarz/Weiß) statt fixer dunkler
+    // Textfarbe — bei dunklen Raumfarben wäre der Titel sonst kaum
+    // lesbar (mit echten Test-PDFs entdeckt).
+    function styleEvent(el, ev) {
+      if (ev.roomColor) {
+        el.style.backgroundColor = ev.roomColor;
+        el.style.color = ev.roomTextColor || '#1a252f';
+      }
+      el.textContent = ev.title;
+      el.title = ev.title;
+    }
+
+    const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni',
+                       'Juli','August','September','Oktober','November','Dezember'];
+
+    // Kalender-Zellen für einen Monat erzeugen (Montag-Start, 6 Wochen)
+    function buildMonth(year, monthIdx) {
+      const first = new Date(year, monthIdx, 1);
+      const dow   = first.getDay(); // 0=So
+      const offset = (dow === 0) ? -6 : 1 - dow;
+      const start  = new Date(year, monthIdx, 1 + offset);
+
+      const days = [];
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        days.push(d);
+      }
+      return days;
+    }
+
+    // Einen Monat als horizontalen Streifen rendern.
+    // Layout: Monatsname (col 1) | Wochentage Mo–So (col 2–8)
+    // Spalten = Wochentage (Mo–So), Zeilen = Kalenderwochen (max. 6)
+    function renderMonth(year, monthIdx) {
+      const days    = buildMonth(year, monthIdx); // 42 Tage, Mo-Start
+      const todayKey = ymd(TODAY);
+
+      function getDay(weekIdx, dowIdx) {
+        return days[weekIdx * 7 + dowIdx];
+      }
+
+      const block = document.createElement('div');
+      block.className = 'month-block';
+
+      // ── Monatsname (linke Spalte, überspannt alle 6 Zeilen) ──
+      const title = document.createElement('div');
+      title.className = 'month-title';
+      title.textContent = MONTHS_DE[monthIdx];
+      block.appendChild(title);
+
+      // ── 6 Kalenderwochen-Zeilen, je 7 Wochentag-Spalten ─────
+      for (let weekIdx = 0; weekIdx < 6; weekIdx++) {
+        for (let dowIdx = 0; dowIdx < 7; dowIdx++) {
+          const isWE    = dowIdx >= 5; // Sa=5, So=6
+          const date    = getDay(weekIdx, dowIdx);
+          const isCurr  = date.getMonth() === monthIdx;
+          const isToday = ymd(date) === todayKey;
+
+          const cell = document.createElement('div');
+          let cls = 'day-cell';
+          if (!isCurr) cls += ' other-month';
+          if (isToday)  cls += ' today';
+          if (isWE && isCurr) cls += ' weekend-day';
+          if (dowIdx === 6)   cls += ' last-col';
+          if (weekIdx === 5)  cls += ' last-row';
+          cell.className = cls;
+          cell.style.gridColumn = String(dowIdx + 2);
+          cell.style.gridRow    = String(weekIdx + 1);
+
+          const header = document.createElement('div');
+          header.className = 'day-cell-header';
+
+          const num = document.createElement('div');
+          num.className = 'day-num';
+          num.textContent = date.getDate() + '.';
+          header.appendChild(num);
+
+          cell.appendChild(header);
+
+          // Events
+          const key  = ymd(date);
+          const evts = evMap.get(key);
+          if (evts && isCurr) {
+            // Erste drei Termine werden wie gehabt unter der Zahl
+            // gestapelt, alles ab dem vierten Termin geht in die
+            // Kopfzeile (siehe unten).
+            const stacked = evts.slice(0, MAX_STACKED_EVENTS);
+            const rest = evts.slice(MAX_STACKED_EVENTS);
+
+            if (stacked.length > 0) {
+              const wrap = document.createElement('div');
+              wrap.className = 'day-events';
+
+              stacked.forEach(ev => {
+                const e = document.createElement('div');
+                e.className = 'ev';
+                styleEvent(e, ev);
+                wrap.appendChild(e);
+              });
+
+              cell.appendChild(wrap);
+            }
+
+            // Vierter Termin (falls vorhanden) wandert neben die
+            // Tageszahl in den bislang ungenutzten Freiraum der
+            // Kopfzeile. Gibt es noch mehr Termine, erscheint dort
+            // stattdessen der "+N weitere"-Hinweis.
+            if (rest.length === 1) {
+              const sideEl = document.createElement('div');
+              sideEl.className = 'ev ev-side';
+              styleEvent(sideEl, rest[0]);
+              header.appendChild(sideEl);
+            } else if (rest.length > 1) {
+              const more = document.createElement('div');
+              more.className = 'ev-more ev-side';
+              more.textContent = `+${rest.length} weitere`;
+              more.title = rest.map(e => e.title).join(', ');
+              header.appendChild(more);
+            }
+          }
+
+          block.appendChild(cell);
+        }
+      }
+
+      return block;
+    }
+
+    // Footer HTML
+    function buildFooter(pageInfoLabel) {
+      const footer = document.createElement('footer');
+      footer.className = 'page-footer';
+
+      const legend = document.createElement('div');
+      legend.className = 'legend';
+      rooms.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        // .style-Zuweisungen statt String-Interpolation in innerHTML:
+        // werden vom Browser als CSS-Wert interpretiert, nicht als HTML
+        // geparst — kein Angriffsvektor über r.color/r.textColor möglich.
+        item.style.background = r.color || '#999999';
+        item.style.color = r.textColor || '#000000';
+
+        // textContent statt innerHTML: r.title (Raumname aus der DB,
+        // von Nutzer:innen frei vergeben) wird als reiner Text
+        // eingefügt, nicht als HTML geparst.
+        item.appendChild(document.createTextNode(r.title));
+
+        legend.appendChild(item);
+      });
+      footer.appendChild(legend);
+
+      const info = document.createElement('div');
+      info.className = 'info-line';
+      const printD = new Date().toLocaleDateString('de-DE');
+      info.innerHTML = `
+        <span>${escapeHtml(FRONTEND_DOMAIN || '')}</span>
+        <span>Raumplaner Ingrid-Manager.de · ${pageInfoLabel} · <strong>Druckdatum:</strong> ${printD}</span>`;
+      footer.appendChild(info);
+      return footer;
+    }
+
+    // 4 Seiten bauen (je 3 Monate)
+    const root = document.getElementById('calendar-root');
+
+    const quarters = [
+      { months: [0,1,2],  label: 'Q1 · Januar – März' },
+      { months: [3,4,5],  label: 'Q2 · April – Juni' },
+      { months: [6,7,8],  label: 'Q3 · Juli – September' },
+      { months: [9,10,11],label: 'Q4 · Oktober – Dezember' },
+    ];
+
+    quarters.forEach((q, qi) => {
+      const page = document.createElement('div');
+      page.className = 'page';
+
+      // Header
+      const header = document.createElement('header');
+      header.className = 'page-header';
+      header.innerHTML = `
+        <div>
+          <h1>${escapeHtml(ORG_NAME)} – Jahresansicht ${YEAR}</h1>
+        </div>`;
+      page.appendChild(header);
+
+      // 3 Monate
+      const grid = document.createElement('div');
+      grid.className = 'months-grid';
+      grid.style.flex = '1 1 auto';
+      grid.style.minHeight = '0';
+
+      q.months.forEach(m => grid.appendChild(renderMonth(YEAR, m)));
+      page.appendChild(grid);
+
+      // Footer
+      page.appendChild(buildFooter(`${q.label} · DIN A3 quer · Seite ${qi+1} von 4`));
+      root.appendChild(page);
+    });
+
+  })();
+  </script>
+
+</body>
+</html>

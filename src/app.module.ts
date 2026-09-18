@@ -20,6 +20,7 @@ import { RoomsModule } from './rooms/rooms.module';
 import { AvmLocationsModule } from './avm-locations/avm-locations.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CalendarEventsModule } from './calendar-events/calendar-events.module';
+import { PrintModule } from './print/print.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReorganizationModule } from './reorganization/reorganization.module';
 import { SeriesEventsModule } from './series-events/series-events.module';
@@ -69,6 +70,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     AvmLocationsModule,
     CategoriesModule,
     CalendarEventsModule,
+    PrintModule,
     ScheduleModule.forRoot(),
     ReorganizationModule,
     SeriesEventsModule,

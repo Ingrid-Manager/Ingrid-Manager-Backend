@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{orgName}} – Wochenansicht</title>
+
+  <!-- FullCalendar v6 -->
+  <!-- FullCalendar v6 (lokal aus dem npm-Paket eingebettet, siehe PrintTemplateService.getFullCalendarScript –
+       Version identisch zum Frontend, siehe package.json "fullcalendar") -->
+  <script>{{{fullCalendarScript}}}</script>
+
+  <style>
+    /* ─── Design-Tokens (identisch mit Monatsansicht) ────────────── */
+    :root {
+      --fc-border-color:       #d1d9e0;
+      --fc-page-bg-color:      #ffffff;
+      --fc-neutral-bg-color:   #f4f6f8;
+      /* Auf Kundenwunsch: "Heute" nicht hervorheben — identisch mit der
+         normalen Seitenhintergrundfarbe, damit FullCalendars eingebaute
+         .fc-day-today-Regel (die diese Variable nutzt) keinen sichtbaren
+         Unterschied mehr erzeugt. */
+      --fc-today-bg-color:     #ffffff;
+      --fc-event-border-color: transparent;
+      --fc-event-text-color: #1a252f;
+
+      --text:  #1f2937;
+      --muted: #6b7280;
+      --accent:#1a6fdb;
+
+      font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #dde1e7; color: var(--text); }
+
+    /* ─── Toolbar ────────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 297mm;
+      margin: 14px auto 0;
+      padding: 0 14px;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { background: #155bbf; }
+
+    /* ─── A4 Quer Seite ──────────────────────────────────────────── */
+    .page {
+      width:  297mm;
+      height: 210mm;
+      margin: 14px auto;
+      background: #fff;
+      box-shadow: 0 8px 32px rgba(0,0,0,.14);
+      /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
+         für den eigentlichen Kalender. */
+      padding: 2mm 4mm 3mm;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 1.5mm;
+      overflow: hidden;
+    }
+
+    /* ─── Kopfzeile ─────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 1mm;
+    }
+    .page-header h1 {
+      font-size: 15pt;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.2px;
+    }
+    .page-header .sub {
+      font-size: 8.5pt;
+      color: var(--muted);
+      margin-top: 1.5mm;
+    }
+    /* Logo vorerst deaktiviert (auf Kundenwunsch) — .logo-box-Regel und
+       das zugehörige Markup weiter unten bewusst entfernt, nicht nur
+       versteckt. Bei Bedarf einfach wieder ergänzen: ein <div class="logo-box">
+       im <header> analog zu den anderen beiden Druckvorlagen. */
+
+    /* ─── Kalender-Wrapper ───────────────────────────────────────── */
+    #calendar-wrap {
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    #calendar {
+      height: 100%;
+    }
+
+    /* ─── FullCalendar Overrides — timeGridWeek ──────────────────── */
+
+    /* FC-Toolbar verstecken */
+    .fc .fc-toolbar { display: none !important; }
+
+    /* Scroll-Container fixieren (kein internes Scrollen) */
+    .fc .fc-timegrid-body,
+    .fc .fc-scroller,
+    .fc .fc-scroller-harness,
+    .fc .fc-scroller-liquid-absolute {
+      overflow: hidden !important;
+      height: 100% !important;
+    }
+
+    /* Spaltenkopf (Wochentage) */
+    .fc .fc-col-header-cell {
+      background: #f0f4f8;
+      border-color: var(--fc-border-color) !important;
+      padding: 1mm 0;
+    }
+    .fc .fc-col-header-cell-cushion {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      padding: 1mm 0;
+      display: block;
+      text-align: center;
+    }
+
+    /* Zeitachse links */
+    .fc .fc-timegrid-axis {
+      width: 10mm !important;
+      padding: 0 !important;
+    }
+    .fc .fc-timegrid-slot-label-cushion {
+      font-size: 6.5pt;
+      color: var(--muted);
+      padding: 0 1.5mm 0 0;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* Zeitslots */
+    .fc .fc-timegrid-slot {
+      height: auto !important;
+    }
+    .fc .fc-timegrid-slot-lane {
+      border-color: #e8edf2 !important;
+    }
+    /* Volle Stunde etwas prominenter */
+    .fc .fc-timegrid-slot-label {
+      border-color: #d1d9e0 !important;
+    }
+
+    /* Heute-Spalte: bewusst NICHT hervorgehoben (auf Kundenwunsch) —
+       weder Hintergrund noch Kopfzeilen-Textfarbe weichen von einem
+       normalen Tag ab. */
+
+    /* Events */
+    .fc .fc-timegrid-event {
+      border-radius: 5px !important;
+      border: none !important;
+      padding: 1.5px 3px !important;
+      font-size: 7pt !important;
+      line-height: 1.3 !important;
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+      /* Ohne Mindesthöhe richtet sich die Boxhöhe strikt nach der
+         Termin-DAUER (z. B. 30 Min. = sehr flache Box) — bei kurzen
+         Terminen mit langem Titel reichte das nicht für mehrzeiligen,
+         umgebrochenen Text, der Titel wurde abgeschnitten (mit echten
+         Test-PDFs entdeckt). Garantiert genug Höhe für mehrere Zeilen
+         Titel + Zeit-Zeile, auch bei sehr kurzen Terminen.
+      */
+      min-height: 14mm;
+    }
+    .fc .fc-event-title {
+      font-weight: 600;
+      white-space: normal;   /* lange Titel umbrechen statt hart abzuschneiden */
+      overflow: hidden;
+      /* Silbentrennung statt wahllosem Wortabbruch mitten im Wort (z. B.
+         "Jugendgrupp/pe") — dank lang="de" oben nutzt der Browser
+         korrekte deutsche Trennregeln. overflow-wrap als Sicherheitsnetz
+         für den seltenen Fall eines einzelnen Wortes, das selbst mit
+         Trennung nicht in die Spalte passt. */
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      overflow-wrap: break-word;
+    }
+    .fc .fc-event-time  { font-size: 6.5pt; opacity: .8; }
+
+    /* Now-Indicator (die rote/blaue "aktuelle Uhrzeit"-Linie) ist über
+       die Konfiguration (nowIndicator: false) bereits deaktiviert und
+       wird von FullCalendar dadurch gar nicht erst ins DOM eingefügt —
+       auf Kundenwunsch, da ein Ausdruck keinen "jetzt"-Zeitpunkt hat. */
+
+    /* Gitter */
+    .fc-theme-standard td,
+    .fc-theme-standard th { border-color: #d1d9e0 !important; }
+
+    /* ─── Footer ─────────────────────────────────────────────────── */
+    .page-footer {
+      border-top: 1px solid var(--fc-border-color);
+      padding-top: 2mm;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5mm;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2mm;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      padding: 1.3mm 3mm;
+      font-size: 7.5pt;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .info-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: var(--muted);
+    }
+    .info-line strong { color: var(--text); font-weight: 600; }
+
+    /* ─── Druck ──────────────────────────────────────────────────── */
+    @page { size: A4 landscape; margin: 0; }
+
+    @media print {
+      body    { background: white; }
+      .toolbar { display: none; }
+      .page {
+        width: 297mm;
+        height: 210mm;
+        margin: 0;
+        box-shadow: none;
+        padding: 2mm 4mm 3mm;
+      }
+      .fc .fc-scroller,
+      .fc .fc-scroller-harness { overflow: hidden !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">⬇ Als PDF drucken</button>
+  </div>
+
+  <main class="page">
+
+    <!-- Kopfzeile -->
+    <header class="page-header">
+      <div>
+        <h1 id="pageTitle">{{orgName}}</h1>
+      </div>
+    </header>
+
+    <!-- Kalender -->
+    <div id="calendar-wrap">
+      <div id="calendar"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="page-footer">
+      <div class="legend">
+        {{#each rooms}}
+        <div class="legend-item" style="background:{{this.color}}; color:{{this.textColor}};">{{this.title}}</div>
+        {{/each}}
+      </div>
+      <div class="info-line">
+        <span>{{frontendDomain}}</span>
+        <span>Raumplaner Ingrid-Manager.de · Wochenansicht · DIN A4 quer · <strong>Druckdatum:</strong> {{printedAt}}</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Termine (vom Backend eingesetzt) ───────────────────────────
+    const events = {{{eventsJson}}};
+
+    // ── FullCalendar ──────────────────────────────────────────────
+    const calEl = document.getElementById('calendar');
+
+    const calendar = new FullCalendar.Calendar(calEl, {
+      locale:         'de',
+      initialView:    'timeGridWeek',
+      initialDate:    '{{initialDateIso}}',
+      firstDay:       1,              // Montag
+      headerToolbar:  false,
+
+      // Kernzeit 09 – 21 Uhr (wie in der Original-Vorlage)
+      slotMinTime:    '09:00:00',
+      slotMaxTime:    '21:00:00',
+
+      // Slotgröße: 30 min; nur volle Stunden beschriften
+      slotDuration:       '00:30:00',
+      slotLabelInterval:  '01:00:00',
+      slotLabelFormat:    { hour: '2-digit', minute: '2-digit', hour12: false },
+
+      // Überlappende Termine NICHT versetzt übereinanderlegen, sondern
+      // sauber in eigene, nebeneinanderliegende Spalten aufteilen — sonst
+      // können sich Titel bei zeitgleichen Terminen unleserlich
+      // überschneiden (mit echten Test-PDFs entdeckt, z. B. "Jugendgruppe"
+      // und "Mütterkreis" zur gleichen Zeit im selben Raum-Slot).
+      slotEventOverlap: false,
+
+      // Ganztägige Termine gibt es im System nicht mehr — die eigene
+      // "Ganztägig"-Zeile am oberen Rand der Wochenansicht wird daher
+      // nicht mehr gebraucht (auf Kundenwunsch entfernt).
+      allDaySlot:     false,
+      nowIndicator:   false,
+
+      // Wochentag + Datum im Spaltenkopf
+      dayHeaderFormat: { weekday: 'short', day: '2-digit', month: '2-digit' },
+
+      events: events,
+      height: '100%',
+      expandRows: true,       // Zeilen auf verfügbare Höhe strecken
+
+      // Raumfarbe je Termin (beliebig viele Räume/Farben statt fixer ev-room1..5-Klassen)
+      eventDidMount: function (info) {
+        const color = info.event.extendedProps.roomColor;
+        if (color) {
+          // Volle Raumfarbe als Hintergrund (vorher nur 20% Deckkraft
+          // gemischt mit Weiß — das ergab eine stark verwässerte, blasse
+          // Darstellung, die kaum noch der eigentlichen Raumfarbe glich
+          // und zudem die automatische Kontrastberechnung für den
+          // Titeltext torpedierte, siehe unten). Kein separater
+          // border-left-Akzent mehr nötig, da er in derselben Farbe wie
+          // die jetzt volle Füllung ohnehin unsichtbar wäre.
+          info.el.style.backgroundColor = color;
+          // Automatisch berechnete Kontrastfarbe (Schwarz/Weiß) statt
+          // fixer dunkler Textfarbe — bei dunklen Raumfarben wäre der
+          // Titel sonst kaum lesbar (mit echten Test-PDFs entdeckt).
+          // WICHTIG: Zusätzlich zur normalen color-Eigenschaft auch die
+          // CSS-Variable --fc-event-text-color setzen — FullCalendars
+          // eigene interne Regel für .fc-event-title verwendet diese
+          // Variable direkt und würde eine reine "color"-Zuweisung auf
+          // dem äußeren Element sonst überschreiben (mit echtem
+          // Test-Rendering entdeckt: Text blieb trotz gesetzter
+          // color-Eigenschaft dunkel).
+          const textColor = info.event.extendedProps.roomTextColor || '#1a252f';
+          info.el.style.setProperty('--fc-event-text-color', textColor);
+          info.el.style.color = textColor;
+        }
+      },
+    });
+
+    calendar.render();
+
+    // Überschrift dynamisch mit KW befüllen
+    const startDate = calendar.view.currentStart;
+
+    const kw  = Math.ceil(
+      ((startDate - new Date(startDate.getFullYear(), 0, 1)) / 86400000 +
+        new Date(startDate.getFullYear(), 0, 1).getDay() + 1) / 7
+    );
+
+    document.getElementById('pageTitle').textContent =
+      `{{orgName}} – KW ${kw} · ${startDate.getFullYear()}`;
+  });
+  </script>
+</body>
+</html>

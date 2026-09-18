@@ -8,5 +8,8 @@ import { CalendarEvent } from './infrastructure/relational/persistence/entities/
   imports: [TypeOrmModule.forFeature([CalendarEvent])],
   providers: [CalendarEventsService],
   controllers: [CalendarEventsController],
+  // Exportiert, damit das eigenständige PrintModul (src/print) Termine
+  // für den Ausdruck laden kann, ohne die Logik zu duplizieren.
+  exports: [CalendarEventsService],
 })
 export class CalendarEventsModule {}
