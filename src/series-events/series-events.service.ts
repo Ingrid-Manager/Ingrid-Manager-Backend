@@ -16,6 +16,10 @@ import { UpdateSeriesFromDateDto } from './application/dto/update-series-from-da
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { SeriesEventMapper } from './application/mappers/series-event.mapper';
 import { UpdateSeriesEventDto } from './application/dto/update-series-event.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class SeriesEventsService {
@@ -26,6 +30,7 @@ export class SeriesEventsService {
     private readonly generator: SeriesGeneratorService,
     @InjectRepository(CalendarEvent)
     private readonly calendarRepo: Repository<CalendarEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async create(dto: CreateSeriesEventDto, user: any) {
@@ -63,10 +68,21 @@ export class SeriesEventsService {
       return manager.save(saved);
     });
 
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Serientermin "${saved.title}" angelegt`,
+    });
+
     return saved;
   }
 
-  async updateFromDate(dto: UpdateSeriesFromDateDto) {
+  async updateFromDate(dto: UpdateSeriesFromDateDto, user: any) {
     const series = await this.repo.findOne({
       where: {
         id: dto.id,
@@ -79,7 +95,7 @@ export class SeriesEventsService {
 
     const splitDate = new Date(dto.splitDate);
 
-    await this.splitSeries(series, splitDate, dto);
+    await this.splitSeries(series, splitDate, dto, user);
 
     return {
       success: true,
@@ -90,6 +106,7 @@ export class SeriesEventsService {
     series: SeriesEvent,
     splitDate: Date,
     dto: UpdateSeriesFromDateDto,
+    user: any,
   ) {
     const oldSeriesEnd = series.seriesEnd;
 
@@ -215,6 +232,17 @@ export class SeriesEventsService {
 
       await manager.save(saved);
     });
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.SERIES_MODIFIED,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: series.id,
+      summary: `${userLabel} hat Serientermin "${series.title}" ab dem ${splitDate.toLocaleDateString('de-DE')} geteilt/angepasst`,
+    });
   }
 
   async findAll() {
@@ -241,7 +269,7 @@ export class SeriesEventsService {
     return SeriesEventMapper.toResponse(entity);
   }
 
-  async update(dto: UpdateSeriesEventDto) {
+  async update(dto: UpdateSeriesEventDto, user: any) {
     const entity = await this.repo.findOne({
       where: {
         id: dto.id,
@@ -252,9 +280,25 @@ export class SeriesEventsService {
       throw new NotFoundException('Series not found');
     }
 
+    const before = { ...entity };
+
     Object.assign(entity, dto);
 
-    return this.repo.save(entity);
+    const saved = await this.repo.save(entity);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Serientermin "${saved.title}" bearbeitet`,
+      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+    });
+
+    return saved;
   }
 
   async deactivate(id: number) {
@@ -271,7 +315,7 @@ export class SeriesEventsService {
     return this.repo.save(entity);
   }
 
-  async delete(id: number) {
+  async delete(id: number, user: any) {
     const series = await this.repo.findOne({
       where: { id },
     });
@@ -288,6 +332,17 @@ export class SeriesEventsService {
       .execute();
 
     await this.repo.delete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: series.id,
+      summary: `${userLabel} hat Serientermin "${series.title}" samt aller Einzeltermine gelöscht`,
+    });
 
     return { success: true };
   }

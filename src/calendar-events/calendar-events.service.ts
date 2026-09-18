@@ -14,12 +14,17 @@ import { RoleEnum } from '../roles/roles.enum';
 import { UpdateCalendarEventDto } from './application/dto/update-calendar-event.dto';
 import { CreateCalendarEventDto } from './application/dto/create-calendar-event.dto';
 import { HeatingCalendarEventsDto } from './application/dto/heating-calendar-events.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class CalendarEventsService {
   constructor(
     @InjectRepository(CalendarEvent)
     private repo: Repository<CalendarEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   private async validateNoOverlap(
@@ -64,7 +69,20 @@ export class CalendarEventsService {
       createdbyid: user.id,
     });
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
+    });
+
+    return saved;
   }
 
   async findInRange(filter: CalendarEventFilterDto) {
@@ -118,7 +136,7 @@ export class CalendarEventsService {
     }
 
     // normale User dürfen nur eigene Events bearbeiten
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot edit this event');
     }
 
@@ -136,9 +154,31 @@ export class CalendarEventsService {
       event.isModified = true;
     }
 
-    Object.assign(event, dto);
+    // Der Ersteller/Owner eines Termins darf beim Bearbeiten nie verändert
+    // werden - selbst wenn er (versehentlich oder böswillig) im Payload
+    // mitgeschickt wird.
+    const updateData: Record<string, unknown> = { ...dto };
+    delete updateData.createdbyid;
 
-    return this.repo.save(event);
+    const before = { ...event };
+
+    Object.assign(event, updateData);
+
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" bearbeitet`,
+      changes: this.auditLogService.diff(before, updateData),
+    });
+
+    return saved;
   }
 
   async delete(id: number, user: any) {
@@ -163,6 +203,18 @@ export class CalendarEventsService {
     }
 
     await this.repo.softDelete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: event.id,
+      summary: `${userLabel} hat Termin "${event.title}" gelöscht (Soft-Delete)`,
+    });
+
     return { success: true };
   }
 

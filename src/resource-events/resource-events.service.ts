@@ -16,12 +16,17 @@ import { UpdateResourceEventDto } from './application/dto/update-resource-event.
 import { ResourceEventMapper } from './application/mappers/resource-event.mapper';
 
 import { RoleEnum } from '../roles/roles.enum';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class ResourceEventsService {
   constructor(
     @InjectRepository(ResourceEvent)
     private repo: Repository<ResourceEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   private validateDateRange(start: string | Date, end: string | Date): void {
@@ -69,7 +74,20 @@ export class ResourceEventsService {
       createdbyid: user.id,
     });
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      service: AuditService.RESOURCES,
+      entityType: AuditEntityType.RESOURCE_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Ressourcenbuchung "${saved.title}" angelegt`,
+    });
+
+    return saved;
   }
 
   async findInRange(filter: ResourceEventFilterDto) {
@@ -100,7 +118,7 @@ export class ResourceEventsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot edit this event');
     }
 
@@ -112,9 +130,25 @@ export class ResourceEventsService {
       event.id,
     );
 
+    const before = { ...event };
+
     Object.assign(event, dto);
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      service: AuditService.RESOURCES,
+      entityType: AuditEntityType.RESOURCE_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Ressourcenbuchung "${saved.title}" bearbeitet`,
+      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+    });
+
+    return saved;
   }
 
   async delete(id: number, user: any) {
@@ -126,11 +160,22 @@ export class ResourceEventsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot delete this event');
     }
 
     await this.repo.softDelete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      service: AuditService.RESOURCES,
+      entityType: AuditEntityType.RESOURCE_EVENT,
+      entityId: event.id,
+      summary: `${userLabel} hat Ressourcenbuchung "${event.title}" gelöscht (Soft-Delete)`,
+    });
 
     return {
       success: true,
