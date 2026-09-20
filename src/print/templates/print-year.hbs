@@ -208,8 +208,13 @@
          sich an ihrer Textlänge orientieren (Hintergrund endet am
          Titelende), statt immer die volle Zellbreite einzunehmen. */
       align-items: flex-start;
-      gap: .5mm;
-      margin-top: .3mm;
+      /* Reduziert von .5mm/.3mm: schafft zusammen mit dem knapperen
+         .ev-Padding unten den Platz für die größere Schrift, ohne dass
+         der Worst-Case (4 sichtbare Termine: 3 gestapelt + 1 in der
+         Kopfzeile) die Zellhöhe von 12.8mm sprengt (mit Playwright
+         gegen echte Beispieldaten gemessen — siehe .ev). */
+      gap: .2mm;
+      margin-top: .1mm;
       min-height: 0;
       overflow: hidden;
     }
@@ -223,9 +228,20 @@
       display: flex;
       align-items: center;
       border-radius: 2.5px;
-      font-size: 5.5pt;
+      /* Schrittweise (0.25pt) gegen den Worst-Case getestet: ein Tag mit
+         4 sichtbaren Terminen (3 gestapelt in .day-events + 1 über
+         .ev-side in der Kopfzeile, mehr Termine laufen ab dem 5. ohnehin
+         über "+N weitere" und sind für diese Grenze irrelevant) füllt
+         damit die 12.8mm hohe Zelle inkl. Tageszahl gerade so aus, ohne
+         dass etwas abgeschnitten wird (mit Playwright gegen echte
+         Beispieldaten gemessen, u. a. einen sehr langen Titel zur
+         Kontrolle des Ellipsis-Truncatings). line-height bewusst NICHT
+         reduziert (bliebe bei 1.25) — ein knapperer Wert hätte zwar noch
+         etwas mehr Schriftgröße erlaubt, riskiert bei dieser winzigen
+         Größe aber abgeschnittene Unterlängen (g/j/p/q/y). */
+      font-size: 6.25pt;
       line-height: 1.25;
-      padding: .5px 2px;
+      padding: .3px 2px;
       /* Begrenzung auf die Zellbreite: durch align-items: flex-start
          oben schrumpft die Box zwar auf ihren Inhalt, ohne max-width
          könnte ein sehr langer Titel sie aber trotzdem über den
@@ -241,7 +257,10 @@
       min-width: 0;
     }
     .ev-more {
-      font-size: 5pt;
+      /* Im selben Verhältnis vergrößert wie .ev (5.5pt -> 6.25pt), auch
+         wenn Tage mit "+N weitere" (5+ Termine) für die 12.8mm-Grenze
+         selbst nicht ausschlaggebend sind — siehe .ev. */
+      font-size: 5.75pt;
       color: var(--muted);
       font-style: italic;
       flex-shrink: 0;
