@@ -211,10 +211,11 @@
       /* Reduziert von .5mm/.3mm: schafft zusammen mit dem knapperen
          .ev-Padding unten den Platz für die größere Schrift, ohne dass
          der Worst-Case (4 sichtbare Termine: 3 gestapelt + 1 in der
-         Kopfzeile) die Zellhöhe von 12.8mm sprengt (mit Playwright
-         gegen echte Beispieldaten gemessen — siehe .ev). */
-      gap: .2mm;
-      margin-top: .1mm;
+         Kopfzeile) die tatsächliche (durch max-height: 100% auf
+         .day-cell bestimmte) Zellhöhe sprengt (mit Playwright gegen
+         echte Beispieldaten gemessen — siehe .ev). */
+      gap: .15mm;
+      margin-top: .15mm;
       min-height: 0;
       overflow: hidden;
     }
@@ -232,16 +233,18 @@
          4 sichtbaren Terminen (3 gestapelt in .day-events + 1 über
          .ev-side in der Kopfzeile, mehr Termine laufen ab dem 5. ohnehin
          über "+N weitere" und sind für diese Grenze irrelevant) füllt
-         damit die 12.8mm hohe Zelle inkl. Tageszahl gerade so aus, ohne
-         dass etwas abgeschnitten wird (mit Playwright gegen echte
-         Beispieldaten gemessen, u. a. einen sehr langen Titel zur
-         Kontrolle des Ellipsis-Truncatings). line-height bewusst NICHT
-         reduziert (bliebe bei 1.25) — ein knapperer Wert hätte zwar noch
-         etwas mehr Schriftgröße erlaubt, riskiert bei dieser winzigen
-         Größe aber abgeschnittene Unterlängen (g/j/p/q/y). */
-      font-size: 6.25pt;
+         damit die tatsächliche Zellhöhe (max-height: 100% der Grid-Zeile,
+         nicht die frühere konservative 12.8mm-Rechengröße) inkl.
+         Tageszahl vollständig aus, ohne dass etwas abgeschnitten wird
+         (mit Playwright gegen echte Beispieldaten gemessen, u. a. einen
+         sehr langen Titel zur Kontrolle des Ellipsis-Truncatings).
+         line-height bewusst NICHT reduziert (bliebe bei 1.25) — ein
+         knapperer Wert hätte zwar noch etwas mehr Schriftgröße erlaubt,
+         riskiert bei dieser winzigen Größe aber abgeschnittene
+         Unterlängen (g/j/p/q/y). */
+      font-size: 7.5pt;
       line-height: 1.25;
-      padding: .3px 2px;
+      padding: .1px 2px;
       /* Begrenzung auf die Zellbreite: durch align-items: flex-start
          oben schrumpft die Box zwar auf ihren Inhalt, ohne max-width
          könnte ein sehr langer Titel sie aber trotzdem über den
@@ -257,10 +260,10 @@
       min-width: 0;
     }
     .ev-more {
-      /* Im selben Verhältnis vergrößert wie .ev (5.5pt -> 6.25pt), auch
-         wenn Tage mit "+N weitere" (5+ Termine) für die 12.8mm-Grenze
+      /* Im selben Verhältnis vergrößert wie .ev (5.5pt -> 7.5pt), auch
+         wenn Tage mit "+N weitere" (5+ Termine) für die Zellhöhen-Grenze
          selbst nicht ausschlaggebend sind — siehe .ev. */
-      font-size: 5.75pt;
+      font-size: 6.75pt;
       color: var(--muted);
       font-style: italic;
       flex-shrink: 0;
