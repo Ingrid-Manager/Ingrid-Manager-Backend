@@ -69,11 +69,18 @@
       background: #fff;
       box-shadow: 0 8px 32px rgba(0,0,0,.14);
       /* Schmale Ränder, besonders oben (auf Kundenwunsch) — mehr Platz
-         für den eigentlichen Kalender. */
-      padding: 2mm 4mm 3mm;
+         für den eigentlichen Kalender. Oben 4mm statt 2mm: die
+         äußersten ~2mm der Seite liegen beim Drucken außerhalb des
+         Druckbereichs und würden abgeschnitten (mit echten Testdrucken
+         nachgewiesen) — die Überschrift braucht daher 2mm mehr Abstand
+         nach oben, um vollständig gedruckt zu werden. Der Abstand
+         zwischen Überschrift und Kalender (padding-bottom unten + Grid-
+         Gap) wird im Gegenzug schmaler gehalten, damit der Kalender
+         kaum an Höhe verliert. */
+      padding: 4mm 4mm 3mm;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      gap: 1.5mm;
+      gap: 0.5mm;
       overflow: hidden;
     }
 
@@ -82,7 +89,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 1mm;
+      padding-bottom: 0.5mm;
     }
     .page-header h1 {
       font-size: 15pt;
@@ -238,7 +245,7 @@
         height: 210mm;
         margin: 0;
         box-shadow: none;
-        padding: 2mm 4mm 3mm;
+        padding: 4mm 4mm 3mm;
       }
       .fc .fc-event-title { white-space: normal !important; }
     }
