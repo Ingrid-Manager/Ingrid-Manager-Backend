@@ -158,10 +158,18 @@
          verlassen): verhindert, dass eine terminreiche Zelle ihrer
          Zeile mehr Höhe "abnimmt" als andere Zeilen, wodurch sonst
          Wochen am Monats-/Seitenende unsichtbar abgeschnitten werden
-         können (mit echten Test-PDFs nachgewiesen). 12.8mm ≈ 1/6 der
-         Monatsblockhöhe auf einer A3-Seite mit 3 Monaten.
+         können (mit echten Test-PDFs nachgewiesen). Prozentual (100%
+         der jeweiligen Grid-Zeile) statt eines festen mm-Werts: ein
+         fester Wert (vorher 12.8mm, für den damaligen Feinabstand
+         kalibriert) lag nach späteren Anpassungen an Kopf-/Fußzeilen-
+         Abständen unter der tatsächlichen Zeilenhöhe — dadurch blieb
+         jede Zeile unterhalb von Zeile 1 unnötig zu niedrig und es
+         entstand darunter eine sichtbare Lücke vor der jeweils
+         nächsten Kalenderwoche (mit echten Test-PDFs nachgewiesen).
+         100% wächst automatisch mit der Zeilenhöhe mit und bleibt so
+         auch bei künftigen Abstands-Änderungen korrekt.
       */
-      max-height: 12.8mm;
+      max-height: 100%;
       overflow: hidden;
     }
     /* letzte Wochentag-Spalte (So): kein rechter Rand (Klasse wird per JS gesetzt) */
