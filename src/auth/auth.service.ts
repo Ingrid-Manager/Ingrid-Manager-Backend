@@ -167,7 +167,7 @@ export class AuthService {
         id: RoleEnum.user,
       },
       status: {
-        id: StatusEnum.inactive,
+        id: StatusEnum.pending,
       },
     });
 
@@ -240,9 +240,13 @@ export class AuthService {
     // Mail-/Sicherheits-Scanner). Ein gültiger, nicht abgelaufener Hash für
     // einen bereits bestätigten Account gilt daher weiterhin als Erfolg,
     // statt einen irreführenden "Link bereits verwendet"-Fehler zu werfen.
-    if (user.status?.id?.toString() === StatusEnum.inactive.toString()) {
+    //
+    // Statusfluss: "pending" = registriert, E-Mail noch nicht bestätigt;
+    // "inactive" = E-Mail bestätigt, wartet auf Freischaltung durch die
+    // Verwaltung; "active" = freigeschaltet.
+    if (user.status?.id?.toString() === StatusEnum.pending.toString()) {
       user.status = {
-        id: StatusEnum.pending,
+        id: StatusEnum.inactive,
       };
 
       await this.usersService.update(user.id, user, user);
