@@ -228,21 +228,25 @@ export class AuthService {
 
     const user = await this.usersService.findById(userId);
 
-    if (
-      !user ||
-      user?.status?.id?.toString() !== StatusEnum.inactive.toString()
-    ) {
+    if (!user) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
         error: `notFound`,
       });
     }
 
-    user.status = {
-      id: StatusEnum.pending,
-    };
+    // Der Link kann bereits ausgewertet worden sein, bevor die Person ihn
+    // selbst öffnet (z. B. durch automatisches Vorab-Abrufen von Links durch
+    // Mail-/Sicherheits-Scanner). Ein gültiger, nicht abgelaufener Hash für
+    // einen bereits bestätigten Account gilt daher weiterhin als Erfolg,
+    // statt einen irreführenden "Link bereits verwendet"-Fehler zu werfen.
+    if (user.status?.id?.toString() === StatusEnum.inactive.toString()) {
+      user.status = {
+        id: StatusEnum.pending,
+      };
 
-    await this.usersService.update(user.id, user, user);
+      await this.usersService.update(user.id, user, user);
+    }
   }
 
   async forgotPassword(email: string): Promise<void> {
