@@ -204,17 +204,12 @@ export class SeriesGeneratorService {
 
   /*
    * Prüft, ob "current" auf einen der konfigurierten Wochentage fällt.
-   *
-   * Date.getDay() liefert 0 für Sonntag, 1 für Montag, ... 6 für Samstag.
-   * series.weekdays wird vom Client in genau dieser Konvention befüllt
-   * (0 = Sonntag), kann aber - z.B. bei älteren Datensätzen - auch die
-   * ISO-Konvention (7 = Sonntag) enthalten. Beide Fälle werden hier auf
-   * 0 normalisiert, damit Sonntags-Termine zuverlässig erzeugt werden.
+   * Date.getDay() und series.weekdays verwenden dieselbe JS-Konvention
+   * (0 = Sonntag ... 6 = Samstag), sodass hier ohne Umrechnung verglichen
+   * werden kann.
    */
   private matchesWeekday(series: SeriesEvent, current: Date): boolean {
-    const weekday = current.getDay();
-
-    return series.weekdays.some((d) => (d === 7 ? 0 : d) === weekday);
+    return series.weekdays.includes(current.getDay());
   }
 
   private applyTime(date: Date, time: string) {

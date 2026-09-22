@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -40,8 +41,12 @@ export class CreateSeriesEventDto {
   @IsDateString()
   seriesEnd!: string;
 
+  /*
+   * JS-Konvention (Date.getDay()): 0 = Sonntag ... 6 = Samstag.
+   */
   @IsArray()
   @ArrayNotEmpty()
+  @IsIn([0, 1, 2, 3, 4, 5, 6], { each: true })
   weekdays!: number[];
 
   @IsBoolean()
