@@ -40,17 +40,13 @@ export class SeriesGeneratorService {
     const current = new Date(from);
 
     while (current <= until && current <= series.seriesEnd) {
-      const weekday = current.getDay();
-
-      const mappedWeekday = weekday === 0 ? 7 : weekday;
-
       if (!this.matchesFrequency(series, current)) {
         current.setDate(current.getDate() + 1);
         continue;
       }
       matchingFrequency++;
 
-      if (series.weekdays.includes(mappedWeekday)) {
+      if (this.matchesWeekday(series, current)) {
         matchingWeekdays++;
 
         await this.createOccurrence(manager, series, current);
@@ -84,15 +80,12 @@ export class SeriesGeneratorService {
     const current = new Date(from);
 
     while (current <= until && current <= series.seriesEnd) {
-      const weekday = current.getDay();
-      const mappedWeekday = weekday === 0 ? 7 : weekday;
-
       if (!this.matchesFrequency(series, current)) {
         current.setDate(current.getDate() + 1);
         continue;
       }
 
-      if (series.weekdays.includes(mappedWeekday)) {
+      if (this.matchesWeekday(series, current)) {
         const start = new Date(current);
         const end = new Date(current);
 
@@ -207,6 +200,21 @@ export class SeriesGeneratorService {
     });
 
     await manager.getRepository(CalendarEvent).save(event);
+  }
+
+  /*
+   * Prüft, ob "current" auf einen der konfigurierten Wochentage fällt.
+   *
+   * Date.getDay() liefert 0 für Sonntag, 1 für Montag, ... 6 für Samstag.
+   * series.weekdays wird vom Client in genau dieser Konvention befüllt
+   * (0 = Sonntag), kann aber - z.B. bei älteren Datensätzen - auch die
+   * ISO-Konvention (7 = Sonntag) enthalten. Beide Fälle werden hier auf
+   * 0 normalisiert, damit Sonntags-Termine zuverlässig erzeugt werden.
+   */
+  private matchesWeekday(series: SeriesEvent, current: Date): boolean {
+    const weekday = current.getDay();
+
+    return series.weekdays.some((d) => (d === 7 ? 0 : d) === weekday);
   }
 
   private applyTime(date: Date, time: string) {

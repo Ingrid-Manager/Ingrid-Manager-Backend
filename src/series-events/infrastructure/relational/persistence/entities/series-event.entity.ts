@@ -70,6 +70,7 @@ export class SeriesEvent {
   /*
    * [1,3]
    * Montag + Mittwoch
+   * (JS-Konvention: 0 = Sonntag ... 6 = Samstag)
    */
   @Column('simple-json')
   weekdays!: number[];
