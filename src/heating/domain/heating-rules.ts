@@ -141,6 +141,19 @@ export function evaluateRoom(
   );
 
   if (candidates.length === 0) {
+    // Sicherheitsnetz: Das reguläre Absenken greift nur in den ersten
+    // 5 Minuten nach Terminende. Ist der Raum danach noch beheizt (z. B.
+    // weil die Fritzbox nicht erreichbar war, das Backend neu gestartet
+    // wurde oder ein überbrückender Folgetermin entfernt wurde) und steht
+    // weder ein laufender noch ein anstehender Termin an, wird das
+    // Absenken nachgeholt.
+    if (room.heated && room.prelim_time !== 0 && !bridge) {
+      return {
+        action: HeatingAction.COOL,
+        event: null,
+        reason: 'Kein laufender oder anstehender Termin (Absenken nachgeholt)',
+      };
+    }
     return { action: null, event: null, reason: 'Kein zutreffender Termin' };
   }
 

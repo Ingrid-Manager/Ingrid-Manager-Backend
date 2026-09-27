@@ -118,9 +118,25 @@ describe('heating-rules', () => {
       expect(result.action).toBe(HeatingAction.COOL);
     });
 
-    it('senkt nach Ablauf des 5-Minuten-Fensters nicht mehr ab', () => {
+    it('holt das Absenken nach, wenn das 5-Minuten-Fenster verpasst wurde', () => {
+      const result = evaluateRoom(room({ heated: true }), [], NOW);
+      expect(result.action).toBe(HeatingAction.COOL);
+      expect(result.event).toBeNull();
+    });
+
+    it('holt das Absenken nicht nach, solange ein Folgetermin überbrückt', () => {
       expect(
-        evaluateRoom(room({ heated: true }), [event(1, -60, -5)], NOW).action,
+        evaluateRoom(
+          room({ heated: true, prelim_time: 30 }),
+          [event(1, 80, 140)],
+          NOW,
+        ).action,
+      ).toBeNull();
+    });
+
+    it('holt das Absenken bei prelim_time = 0 nicht nach', () => {
+      expect(
+        evaluateRoom(room({ heated: true, prelim_time: 0 }), [], NOW).action,
       ).toBeNull();
     });
 

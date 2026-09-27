@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -73,11 +73,27 @@ export class HeatingService {
       return;
     }
 
-    this.running = true;
     try {
       await this.run(new Date());
     } catch (error) {
       this.logger.error('Heizlauf fehlgeschlagen', error as Error);
+    }
+  }
+
+  /**
+   * Stellt sicher, dass nie zwei schreibende Läufe (Cron, manueller Lauf,
+   * Initialisierung) gleichzeitig Befehle senden und `heated` speichern.
+   */
+  private async exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.running) {
+      throw new ConflictException(
+        'Es läuft bereits eine Heizungsauswertung, bitte später erneut versuchen.',
+      );
+    }
+
+    this.running = true;
+    try {
+      return await fn();
     } finally {
       this.running = false;
     }
@@ -110,9 +126,19 @@ export class HeatingService {
    *  2. Normale Räume auswerten (HEAT/COOL inkl. BRIDGE, spätester e*)
    *  3. Flur-Sonderregel auf Basis des aktualisierten |H|
    */
-  async run(
+  run(
     now: Date,
     options: HeatingRunOptions = {},
+  ): Promise<HeatingRunResultDto> {
+    // Die Vorschau (dryRun) schreibt nichts und braucht keine Sperre.
+    return options.dryRun
+      ? this.evaluate(now, options)
+      : this.exclusive(() => this.evaluate(now, options));
+  }
+
+  private async evaluate(
+    now: Date,
+    options: HeatingRunOptions,
   ): Promise<HeatingRunResultDto> {
     const dryRun = options.dryRun ?? false;
     const { seasonStart, seasonEnd, hallwayRoomId } = this.config;
@@ -177,9 +203,16 @@ export class HeatingService {
    * Initialzustand herstellen: Alle Räume auf empty_temp absenken und
    * heated = false setzen (z. B. einmalig beim Rollout).
    */
-  async initialize(
+  initialize(
     user?: AuditLogUser | null,
     now: Date = new Date(),
+  ): Promise<HeatingRunResultDto> {
+    return this.exclusive(() => this.initializeRooms(user, now));
+  }
+
+  private async initializeRooms(
+    user: AuditLogUser | null | undefined,
+    now: Date,
   ): Promise<HeatingRunResultDto> {
     const { hallwayRoomId } = this.config;
     const rooms = await this.roomRepo.find({ order: { id: 'ASC' } });

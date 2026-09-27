@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { ConflictException } from '@nestjs/common';
 
 import { HeatingService } from './heating.service';
 import { Room } from '../rooms/infrastructure/relational/persistence/entities/room.entity';
@@ -157,6 +158,26 @@ describe('HeatingService', () => {
     expect(dispatcher.dispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ roomId: 2 }),
     );
+  });
+
+  it('lehnt parallele schreibende Läufe ab', async () => {
+    let release!: () => void;
+    dispatcher.dispatch.mockReturnValueOnce(
+      new Promise<void>((resolve) => (release = resolve)),
+    );
+
+    const first = service.run(NOW);
+    await expect(service.run(NOW)).rejects.toThrow(ConflictException);
+    await expect(service.initialize()).rejects.toThrow(ConflictException);
+    // Vorschau schreibt nichts und ist weiterhin erlaubt
+    await expect(service.run(NOW, { dryRun: true })).resolves.toBeDefined();
+
+    // Cron überspringt still, statt einen Fehler zu werfen
+    await service.runScheduled();
+
+    release();
+    await first;
+    await expect(service.run(NOW)).resolves.toBeDefined();
   });
 
   it('läuft per Cron nur, wenn HEATING_ENABLED gesetzt ist', async () => {
