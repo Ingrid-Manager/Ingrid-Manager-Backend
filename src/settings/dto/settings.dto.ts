@@ -8,4 +8,7 @@ export class SettingsDto {
   techLastName: string;
   techEmail: string;
   smtpUser: string;
+  /* Heizsaison (nur Anzeige, Konfiguration ausschließlich über .env) */
+  heatingSeasonStart: string | null;
+  heatingSeasonEnd: string | null;
 }

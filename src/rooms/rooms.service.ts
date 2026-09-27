@@ -61,6 +61,27 @@ export class RoomsService {
     return rooms;
   }
 
+  /*
+   * Alle (nicht gelöschten) Räume für die kalendergesteuerte
+   * Heizungssteuerung.
+   */
+  async findAllForHeating(): Promise<Room[]> {
+    return this.repo.find({
+      order: {
+        id: 'ASC',
+      },
+    });
+  }
+
+  /*
+   * Persistiert den Heizzustand eines Raums. Wird ausschließlich von der
+   * automatischen Heizungssteuerung verwendet und daher nicht im
+   * Aktivitätsprotokoll erfasst.
+   */
+  async setHeated(id: Room['id'], heated: boolean): Promise<void> {
+    await this.repo.update({ id }, { heated });
+  }
+
   async findNames() {
     const rooms = await this.repo.find({
       select: {
@@ -102,7 +123,10 @@ export class RoomsService {
       entityType: AuditEntityType.ROOM,
       entityId: saved.id,
       summary: `${userLabel} hat Raum "${saved.title}" bearbeitet`,
-      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+      changes: this.auditLogService.diff(
+        before,
+        dto as Record<string, unknown>,
+      ),
     });
 
     return saved;

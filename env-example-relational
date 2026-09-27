@@ -50,3 +50,12 @@ AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN=1d
 APPLE_APP_AUDIENCE=[]
 
 WORKER_HOST=redis://redis:6379/1
+
+# Kalendergesteuerte Raumheizung
+# Heizsaison (jahresunabhängig, Format MM-DD, Grenzen inklusive)
+HEATING_SEASON_START=10-01
+HEATING_SEASON_END=04-30
+# Raum-ID(s) der Flure, kommagetrennt, höchstens ein Flur pro Location
+HEATING_HALLWAY_ROOM_ID=
+# Minütliche Heizungssteuerung aktivieren (Default: true)
+HEATING_SCHEDULER_ENABLED=true

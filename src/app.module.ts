@@ -5,6 +5,7 @@ import databaseConfig from './database/config/database.config';
 import authConfig from './auth/config/auth.config';
 import appConfig from './config/app.config';
 import mailConfig from './mail/config/mail.config';
+import heatingConfig from './heating/config/heating.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -44,7 +45,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, authConfig, appConfig, mailConfig],
+      load: [databaseConfig, authConfig, appConfig, mailConfig, heatingConfig],
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,

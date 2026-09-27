@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AvmLocation } from './infrastructure/relational/persistence/entities/avm-location.entity';
 import { Repository } from 'typeorm';
 import { CreateAvmLocationDto } from './infrastructure/application/dto/create-avm-location.dto';
 import { AvmLoactionMapper } from './infrastructure/application/mapper/avm-location.mapper';
 import { UpdateAvmLocationDto } from './infrastructure/application/dto/update-avm-location.dto';
-import { AvmConnection } from '../libs/avm-aha-client';
+import { AvmConnection } from './avm-connection.type';
 import { CryptoService } from '../crypto/crypto.service';
 
 @Injectable()
@@ -77,6 +81,14 @@ export class AvmLocationsService {
     return AvmLoactionMapper.toResponse(saved);
   }
 
+  /*
+   * Liefert die (entschlüsselten) Zugangsdaten der FRITZ!Box einer
+   * Location.
+   *
+   * @throws NotFoundException wenn die Location nicht existiert
+   * @throws UnprocessableEntityException wenn URL, Benutzer oder Passwort
+   *         der Location nicht hinterlegt sind
+   */
   async getConnection(id: number): Promise<AvmConnection> {
     const entity = await this.repo.findOne({
       where: {
@@ -88,10 +100,18 @@ export class AvmLocationsService {
       throw new NotFoundException(`AVM Location ${id} not found`);
     }
 
+    if (!entity.ahaurl || !entity.ahauser || !entity.ahapassword) {
+      throw new UnprocessableEntityException(
+        `AVM Location ${id} has no complete FRITZ!Box configuration`,
+      );
+    }
+
     return {
-      url: entity.ahaurl!,
-      username: entity.ahauser!,
-      password: this.cryptoService.decrypt(entity.ahapassword!),
+      locationId: entity.id,
+      title: entity.title || `AVM Location ${entity.id}`,
+      url: entity.ahaurl,
+      username: entity.ahauser,
+      password: this.cryptoService.decrypt(entity.ahapassword),
     };
   }
 }

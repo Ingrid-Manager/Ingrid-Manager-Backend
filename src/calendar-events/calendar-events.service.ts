@@ -80,7 +80,10 @@ export class CalendarEventsService {
       entityType: AuditEntityType.CALENDAR_EVENT,
       entityId: saved.id,
       summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
-      changes: this.auditLogService.diff(null, { ...dto } as Record<string, unknown>),
+      changes: this.auditLogService.diff(null, { ...dto } as Record<
+        string,
+        unknown
+      >),
     });
 
     return saved;
@@ -240,6 +243,27 @@ export class CalendarEventsService {
     });
 
     return { success: true };
+  }
+
+  /*
+   * Aktive, raumbezogene Termine für die Heizungssteuerung, die sich mit
+   * dem Zeitraum [from, to] überschneiden:
+   *
+   *   deletedAt IS NULL, isBackground = false, roomid gesetzt
+   */
+  async findActiveHeatingEvents(
+    from: Date,
+    to: Date,
+  ): Promise<CalendarEvent[]> {
+    return this.repo
+      .createQueryBuilder('event')
+      .where('event.isBackground = false')
+      .andWhere('event.deletedAt IS NULL')
+      .andWhere('event.roomid IS NOT NULL')
+      .andWhere('event.end >= :from', { from })
+      .andWhere('event.start <= :to', { to })
+      .orderBy('event.start', 'ASC')
+      .getMany();
   }
 
   async getHeatingEvents(

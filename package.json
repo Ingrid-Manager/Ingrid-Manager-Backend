@@ -1,6 +1,6 @@
 {
   "name": "Ingrid-Manager-Backend",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "",
   "author": "",
   "private": true,
@@ -28,6 +28,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "check": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
