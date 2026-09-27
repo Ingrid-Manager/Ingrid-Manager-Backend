@@ -2,24 +2,27 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Room } from '../rooms/infrastructure/relational/persistence/entities/room.entity';
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
+import { AvmLocation } from '../avm-locations/infrastructure/relational/persistence/entities/avm-location.entity';
 import { HeatingRulesController } from './heating-rules.controller';
 import { HeatingRulesService } from './heating-rules.service';
+import { HEATING_COMMAND_DISPATCHER } from './dispatcher/heating-command-dispatcher';
 import {
-  HEATING_COMMAND_DISPATCHER,
-  LoggingHeatingCommandDispatcher,
-} from './dispatcher/heating-command-dispatcher';
+  FRITZBOX_FACTORY,
+  FritzboxConnectionService,
+  defaultFritzBoxFactory,
+} from './fritzbox/fritzbox-connection.service';
+import { FritzboxHeatingCommandDispatcher } from './fritzbox/fritzbox-heating-command-dispatcher';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Room, CalendarEvent])],
+  imports: [TypeOrmModule.forFeature([Room, CalendarEvent, AvmLocation])],
   controllers: [HeatingRulesController],
   providers: [
     HeatingRulesService,
-    // Bis das Fritzbox-Modul fertig ist, werden die Schaltbefehle nur
-    // protokolliert. Anschließend hier die Fritzbox-Implementierung von
-    // HeatingCommandDispatcher eintragen.
+    FritzboxConnectionService,
+    { provide: FRITZBOX_FACTORY, useValue: defaultFritzBoxFactory },
     {
       provide: HEATING_COMMAND_DISPATCHER,
-      useClass: LoggingHeatingCommandDispatcher,
+      useClass: FritzboxHeatingCommandDispatcher,
     },
   ],
   exports: [HeatingRulesService],
