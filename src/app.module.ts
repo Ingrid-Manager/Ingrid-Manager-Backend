@@ -5,6 +5,7 @@ import databaseConfig from './database/config/database.config';
 import authConfig from './auth/config/auth.config';
 import appConfig from './config/app.config';
 import mailConfig from './mail/config/mail.config';
+import heatingConfig from './heating/config/heating.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,14 +21,16 @@ import { RoomsModule } from './rooms/rooms.module';
 import { AvmLocationsModule } from './avm-locations/avm-locations.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CalendarEventsModule } from './calendar-events/calendar-events.module';
+import { PrintModule } from './print/print.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReorganizationModule } from './reorganization/reorganization.module';
 import { SeriesEventsModule } from './series-events/series-events.module';
 import { SettingsModule } from './settings/settings.module';
 import { ResourceModule } from './resources/resource.module';
 import { ResourceEventsModule } from './resource-events/resource-events.module';
-//import { AvmTestModule } from './avm-test/avm-test.module';
 import { CryptoModule } from './crypto/crypto.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
+import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module';
 import { HeatingModule } from './heating/heating.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
@@ -41,7 +44,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, authConfig, appConfig, mailConfig],
+      load: [databaseConfig, authConfig, appConfig, mailConfig, heatingConfig],
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,
@@ -59,7 +62,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       }),
     }),
 
-    //AvmTestModule,
+    AuditLogModule,
     UsersModule,
     AuthModule,
     SessionModule,
@@ -70,6 +73,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     AvmLocationsModule,
     CategoriesModule,
     CalendarEventsModule,
+    PrintModule,
     ScheduleModule.forRoot(),
     ReorganizationModule,
     SeriesEventsModule,
@@ -77,6 +81,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     ResourceModule,
     ResourceEventsModule,
     CryptoModule,
+    OwnershipTransferModule,
     HeatingModule,
   ],
 })

@@ -7,10 +7,24 @@ import axios from 'axios';
 import { CalendarEvent } from '../../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { Category } from '../../categories/infrastructure/relational/persistence/entities/category.entity';
 import { Room } from '../../rooms/infrastructure/relational/persistence/entities/room.entity';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { AuditAction } from '../../audit-log/audit-action.enum';
+import { AuditEntityType } from '../../audit-log/audit-entity-type.enum';
+import { AuditService } from '../../audit-log/audit-service.enum';
+
+export interface ReorganizationActingUser {
+  id: number;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
 
 @Injectable()
 export class HolidayReorganizationService {
   private readonly logger = new Logger(HolidayReorganizationService.name);
+
+  // Feste Kategorie-ID für importierte Feiertage/Ferien (siehe importOpenHolidays unten).
+  private static readonly HOLIDAY_CATEGORY_ID = 9999;
 
   constructor(
     @InjectRepository(CalendarEvent)
@@ -23,20 +37,51 @@ export class HolidayReorganizationService {
     private readonly roomRepository: Repository<Room>,
 
     private readonly configService: ConfigService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
-  async run(): Promise<void> {
-    await this.importOpenHolidays();
+  async run(user?: ReorganizationActingUser | null): Promise<void> {
+    try {
+      await this.importOpenHolidays(user);
+    } catch (error) {
+      await this.auditLogService.log({
+        user: null,
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.REORGANIZATION,
+        entityType: AuditEntityType.SYSTEM,
+        entityId: null,
+        summary: `Ferien-Import fehlgeschlagen: ${(error as Error).message}`,
+      });
+
+      throw error;
+    }
   }
 
-  private async importOpenHolidays(): Promise<void> {
+  /** Alle aktuell importierten Feiertage/Ferien, für die Admin-Übersicht. */
+  async list() {
+    const holidays = await this.calendarEventRepository.find({
+      where: { categoryid: HolidayReorganizationService.HOLIDAY_CATEGORY_ID },
+      order: { start: 'ASC' },
+    });
+
+    return holidays.map((holiday) => ({
+      id: holiday.id,
+      title: holiday.title,
+      start: holiday.start,
+      end: holiday.end,
+    }));
+  }
+
+  private async importOpenHolidays(
+    user?: ReorganizationActingUser | null,
+  ): Promise<void> {
     const subdivision = this.configService.get<string>('ORG_BUNDESLAND', {
       infer: true,
     });
 
     const holidayCategory = await this.categoryRepository.findOne({
       where: {
-        id: 9999,
+        id: HolidayReorganizationService.HOLIDAY_CATEGORY_ID,
       },
     });
 
@@ -117,5 +162,27 @@ export class HolidayReorganizationService {
     }
 
     this.logger.log(`${allEvents.length} Feiertage/Ferien importiert`);
+
+    if (user) {
+      const userLabel = await this.auditLogService.getUserLabel(user);
+      await this.auditLogService.log({
+        user: { id: user.id },
+        userLabel,
+        action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
+        entityType: AuditEntityType.SYSTEM,
+        entityId: null,
+        summary: `${userLabel} hat den Ferien-Import manuell ausgelöst (${allEvents.length} importiert)`,
+      });
+    } else {
+      await this.auditLogService.log({
+        user: null,
+        action: AuditAction.HOLIDAYS_IMPORTED,
+        service: AuditService.REORGANIZATION,
+        entityType: AuditEntityType.SYSTEM,
+        entityId: null,
+        summary: `System hat ${allEvents.length} Feiertage/Ferien importiert`,
+      });
+    }
   }
 }

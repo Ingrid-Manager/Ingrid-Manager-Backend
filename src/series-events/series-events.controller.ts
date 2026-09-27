@@ -56,10 +56,11 @@ export class SeriesEventsController {
     id: number,
     @Body()
     dto: UpdateSeriesEventDto,
+    @Req() req,
   ) {
     dto.id = id;
 
-    return this.service.update(dto);
+    return this.service.update(dto, req.user);
   }
 
   @Patch(':id/split')
@@ -68,14 +69,15 @@ export class SeriesEventsController {
     id: number,
     @Body()
     dto: UpdateSeriesFromDateDto,
+    @Req() req,
   ) {
     dto.id = id;
 
-    return this.service.updateFromDate(dto);
+    return this.service.updateFromDate(dto, req.user);
   }
 
   @Delete(':id')
-  delete(@Param('id', ParseIntPipe) id: number) {
-    return this.service.delete(id);
+  delete(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.service.delete(id, req.user);
   }
 }

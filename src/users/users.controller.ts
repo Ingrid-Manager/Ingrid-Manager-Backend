@@ -56,8 +56,11 @@ export class UsersController {
   })
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createProfileDto: CreateUserDto): Promise<User> {
-    return this.usersService.create(createProfileDto);
+  create(
+    @Body() createProfileDto: CreateUserDto,
+    @Request() request,
+  ): Promise<User> {
+    return this.usersService.create(createProfileDto, request.user);
   }
 
   @ApiOkResponse({
@@ -135,7 +138,7 @@ export class UsersController {
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: User['id']): Promise<void> {
-    return this.usersService.remove(id);
+  remove(@Param('id') id: User['id'], @Request() request): Promise<void> {
+    return this.usersService.remove(id, request.user);
   }
 }

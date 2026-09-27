@@ -16,6 +16,10 @@ import { UpdateSeriesFromDateDto } from './application/dto/update-series-from-da
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { SeriesEventMapper } from './application/mappers/series-event.mapper';
 import { UpdateSeriesEventDto } from './application/dto/update-series-event.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class SeriesEventsService {
@@ -26,6 +30,7 @@ export class SeriesEventsService {
     private readonly generator: SeriesGeneratorService,
     @InjectRepository(CalendarEvent)
     private readonly calendarRepo: Repository<CalendarEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async create(dto: CreateSeriesEventDto, user: any) {
@@ -63,10 +68,22 @@ export class SeriesEventsService {
       return manager.save(saved);
     });
 
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Serientermin "${saved.title}" angelegt`,
+      changes: this.auditLogService.diff(null, { ...dto } as Record<string, unknown>),
+    });
+
     return saved;
   }
 
-  async updateFromDate(dto: UpdateSeriesFromDateDto) {
+  async updateFromDate(dto: UpdateSeriesFromDateDto, user: any) {
     const series = await this.repo.findOne({
       where: {
         id: dto.id,
@@ -79,7 +96,7 @@ export class SeriesEventsService {
 
     const splitDate = new Date(dto.splitDate);
 
-    await this.splitSeries(series, splitDate, dto);
+    await this.splitSeries(series, splitDate, dto, user);
 
     return {
       success: true,
@@ -90,6 +107,7 @@ export class SeriesEventsService {
     series: SeriesEvent,
     splitDate: Date,
     dto: UpdateSeriesFromDateDto,
+    user: any,
   ) {
     const oldSeriesEnd = series.seriesEnd;
 
@@ -215,6 +233,17 @@ export class SeriesEventsService {
 
       await manager.save(saved);
     });
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.SERIES_MODIFIED,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: series.id,
+      summary: `${userLabel} hat Serientermin "${series.title}" ab dem ${splitDate.toLocaleDateString('de-DE')} geteilt/angepasst`,
+    });
   }
 
   async findAll() {
@@ -241,7 +270,7 @@ export class SeriesEventsService {
     return SeriesEventMapper.toResponse(entity);
   }
 
-  async update(dto: UpdateSeriesEventDto) {
+  async update(dto: UpdateSeriesEventDto, user: any) {
     const entity = await this.repo.findOne({
       where: {
         id: dto.id,
@@ -252,9 +281,44 @@ export class SeriesEventsService {
       throw new NotFoundException('Series not found');
     }
 
-    Object.assign(entity, dto);
+    const updateData: Record<string, unknown> = { ...dto };
 
-    return this.repo.save(entity);
+    // dto.seriesStart/seriesEnd sind (durch @IsDateString() validierte)
+    // Strings, entity.seriesStart/seriesEnd aber echte Date-Objekte -
+    // ohne Umwandlung würde Object.assign() das Entity-Feld mit einem
+    // String überschreiben statt einem Date, und der Audit-Log-Vergleich
+    // unten würde die Felder selbst dann als "geändert" ausweisen, wenn
+    // sich der Zeitraum nicht geändert hat (siehe dieselbe Korrektur in
+    // CalendarEventsService.update).
+    if (typeof updateData.seriesStart === 'string') {
+      updateData.seriesStart = new Date(updateData.seriesStart);
+    }
+    if (typeof updateData.seriesEnd === 'string') {
+      updateData.seriesEnd = new Date(updateData.seriesEnd);
+    }
+
+    const before = { ...entity };
+
+    Object.assign(entity, updateData);
+
+    const saved = await this.repo.save(entity);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Serientermin "${saved.title}" bearbeitet`,
+      // snapshot() statt diff(): zeigt immer alle Konfigurationsfelder,
+      // nicht nur die geänderten - siehe dieselbe Begründung in
+      // CalendarEventsService.update.
+      changes: this.auditLogService.snapshot(before, updateData),
+    });
+
+    return saved;
   }
 
   async deactivate(id: number) {
@@ -271,7 +335,7 @@ export class SeriesEventsService {
     return this.repo.save(entity);
   }
 
-  async delete(id: number) {
+  async delete(id: number, user: any) {
     const series = await this.repo.findOne({
       where: { id },
     });
@@ -288,6 +352,20 @@ export class SeriesEventsService {
       .execute();
 
     await this.repo.delete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.SERIES_EVENT,
+      entityId: series.id,
+      summary: `${userLabel} hat Serientermin "${series.title}" samt aller Einzeltermine gelöscht`,
+      // Voller Datensatz der gelöschten Serie, aus demselben Grund wie
+      // beim Löschen eines Einzeltermins (siehe CalendarEventsService).
+      changes: this.auditLogService.snapshot({ ...series }, null),
+    });
 
     return { success: true };
   }

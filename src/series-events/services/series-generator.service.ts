@@ -40,17 +40,13 @@ export class SeriesGeneratorService {
     const current = new Date(from);
 
     while (current <= until && current <= series.seriesEnd) {
-      const weekday = current.getDay();
-
-      const mappedWeekday = weekday === 0 ? 7 : weekday;
-
       if (!this.matchesFrequency(series, current)) {
         current.setDate(current.getDate() + 1);
         continue;
       }
       matchingFrequency++;
 
-      if (series.weekdays.includes(mappedWeekday)) {
+      if (this.matchesWeekday(series, current)) {
         matchingWeekdays++;
 
         await this.createOccurrence(manager, series, current);
@@ -84,15 +80,12 @@ export class SeriesGeneratorService {
     const current = new Date(from);
 
     while (current <= until && current <= series.seriesEnd) {
-      const weekday = current.getDay();
-      const mappedWeekday = weekday === 0 ? 7 : weekday;
-
       if (!this.matchesFrequency(series, current)) {
         current.setDate(current.getDate() + 1);
         continue;
       }
 
-      if (series.weekdays.includes(mappedWeekday)) {
+      if (this.matchesWeekday(series, current)) {
         const start = new Date(current);
         const end = new Date(current);
 
@@ -207,6 +200,16 @@ export class SeriesGeneratorService {
     });
 
     await manager.getRepository(CalendarEvent).save(event);
+  }
+
+  /*
+   * Prüft, ob "current" auf einen der konfigurierten Wochentage fällt.
+   * Date.getDay() und series.weekdays verwenden dieselbe JS-Konvention
+   * (0 = Sonntag ... 6 = Samstag), sodass hier ohne Umrechnung verglichen
+   * werden kann.
+   */
+  private matchesWeekday(series: SeriesEvent, current: Date): boolean {
+    return series.weekdays.includes(current.getDay());
   }
 
   private applyTime(date: Date, time: string) {

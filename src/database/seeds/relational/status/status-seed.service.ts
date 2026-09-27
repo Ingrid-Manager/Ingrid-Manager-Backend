@@ -12,19 +12,21 @@ export class StatusSeedService {
   ) {}
 
   async run() {
-    const count = await this.repository.count();
+    const statuses: Array<{ id: StatusEnum; name: string }> = [
+      { id: StatusEnum.active, name: 'Active' },
+      { id: StatusEnum.inactive, name: 'Inactive' },
+      { id: StatusEnum.pending, name: 'Pending' },
+      { id: StatusEnum.blocked, name: 'Blocked' },
+    ];
 
-    if (!count) {
-      await this.repository.save([
-        this.repository.create({
-          id: StatusEnum.active,
-          name: 'Active',
-        }),
-        this.repository.create({
-          id: StatusEnum.inactive,
-          name: 'Inactive',
-        }),
-      ]);
+    for (const status of statuses) {
+      const count = await this.repository.count({
+        where: { id: status.id },
+      });
+
+      if (!count) {
+        await this.repository.save(this.repository.create(status));
+      }
     }
   }
 }

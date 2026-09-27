@@ -14,12 +14,17 @@ import { RoleEnum } from '../roles/roles.enum';
 import { UpdateCalendarEventDto } from './application/dto/update-calendar-event.dto';
 import { CreateCalendarEventDto } from './application/dto/create-calendar-event.dto';
 import { HeatingCalendarEventsDto } from './application/dto/heating-calendar-events.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class CalendarEventsService {
   constructor(
     @InjectRepository(CalendarEvent)
     private repo: Repository<CalendarEvent>,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   private async validateNoOverlap(
@@ -64,7 +69,24 @@ export class CalendarEventsService {
       createdbyid: user.id,
     });
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.CREATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" angelegt`,
+      changes: this.auditLogService.diff(null, { ...dto } as Record<
+        string,
+        unknown
+      >),
+    });
+
+    return saved;
   }
 
   async findInRange(filter: CalendarEventFilterDto) {
@@ -73,6 +95,11 @@ export class CalendarEventsService {
       .leftJoinAndSelect('event.room', 'room')
       .leftJoinAndSelect('event.category', 'category')
       .leftJoinAndSelect('event.user', 'user')
+      // Für die Jahresansicht der Druckfunktion: dort sollen wöchentlich/
+      // zweiwöchentlich wiederkehrende Termine ausgeblendet werden. Dafür
+      // wird die Wiederholungs-Frequenz der Serie benötigt (siehe
+      // CalnedarEventMapper / print-fullcalendar-data.ts::buildYearEvents).
+      .leftJoinAndSelect('event.series', 'series')
       .where('event.start <= :end', { end: filter.end })
       .andWhere('event.end >= :start', { start: filter.start });
 
@@ -113,7 +140,7 @@ export class CalendarEventsService {
     }
 
     // normale User dürfen nur eigene Events bearbeiten
-    if (user.role?.name === RoleEnum.user && event.createdbyid !== user.id) {
+    if (user.role?.id === RoleEnum.user && event.createdbyid !== user.id) {
       throw new ForbiddenException('You cannot edit this event');
     }
 
@@ -137,9 +164,44 @@ export class CalendarEventsService {
     const updateData: Record<string, unknown> = { ...dto };
     delete updateData.createdbyid;
 
+    // dto.start/dto.end sind (durch @IsDateString() validierte) Strings,
+    // event.start/event.end auf dem Entity aber echte Date-Objekte. Ohne
+    // diese Umwandlung würde Object.assign() das Entity-Feld mit einem
+    // String überschreiben statt einem Date, und der Audit-Log-Diff
+    // unten würde start/end selbst dann als "geändert" ausweisen, wenn
+    // der Termin unverändert blieb (Date- vs. String-Serialisierung von
+    // JSON.stringify unterscheidet sich, auch bei identischem Zeitpunkt).
+    if (typeof updateData.start === 'string') {
+      updateData.start = new Date(updateData.start);
+    }
+    if (typeof updateData.end === 'string') {
+      updateData.end = new Date(updateData.end);
+    }
+
+    const before = { ...event };
+
     Object.assign(event, updateData);
 
-    return this.repo.save(event);
+    const saved = await this.repo.save(event);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.UPDATE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: saved.id,
+      summary: `${userLabel} hat Termin "${saved.title}" bearbeitet`,
+      // snapshot() statt diff(): zeigt immer alle Felder (Datum, Raum,
+      // Kategorie, ...), nicht nur die tatsächlich geänderten - sonst
+      // lässt sich z. B. bei einer reinen Titeländerung eines
+      // Serientermins nicht mehr nachvollziehen, um welchen konkreten
+      // Termin (welches Datum) es überhaupt ging.
+      changes: this.auditLogService.snapshot(before, updateData),
+    });
+
+    return saved;
   }
 
   async delete(id: number, user: any) {
@@ -164,7 +226,44 @@ export class CalendarEventsService {
     }
 
     await this.repo.softDelete(id);
+
+    const userLabel = await this.auditLogService.getUserLabel({ id: user.id });
+    await this.auditLogService.log({
+      user: { id: user.id },
+      userLabel,
+      action: AuditAction.DELETE,
+      service: AuditService.EVENTS,
+      entityType: AuditEntityType.CALENDAR_EVENT,
+      entityId: event.id,
+      summary: `${userLabel} hat Termin "${event.title}" gelöscht (Soft-Delete)`,
+      // Voller Datensatz des gelöschten Termins, aus demselben Grund wie
+      // bei update(): sonst bleibt im Protokoll nur der Titel übrig, um
+      // den gelöschten Termin zu identifizieren.
+      changes: this.auditLogService.snapshot({ ...event }, null),
+    });
+
     return { success: true };
+  }
+
+  /*
+   * Aktive, raumbezogene Termine für die Heizungssteuerung, die sich mit
+   * dem Zeitraum [from, to] überschneiden:
+   *
+   *   deletedAt IS NULL, isBackground = false, roomid gesetzt
+   */
+  async findActiveHeatingEvents(
+    from: Date,
+    to: Date,
+  ): Promise<CalendarEvent[]> {
+    return this.repo
+      .createQueryBuilder('event')
+      .where('event.isBackground = false')
+      .andWhere('event.deletedAt IS NULL')
+      .andWhere('event.roomid IS NOT NULL')
+      .andWhere('event.end >= :from', { from })
+      .andWhere('event.start <= :to', { to })
+      .orderBy('event.start', 'ASC')
+      .getMany();
   }
 
   async getHeatingEvents(
