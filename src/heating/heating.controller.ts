@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
@@ -8,11 +10,24 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { RolesGuard } from '../roles/roles.guard';
+import { Roles } from '../roles/roles.decorator';
+import { RoleEnum } from '../roles/roles.enum';
 import { HeatingService } from './heating.service';
 import { ConnectHeatingDto } from './dto/connect-heating.dto';
 import { SetTemperatureDto } from './dto/set-temperature.dto';
 
+/*
+ * Diagnose- und Steuerungsendpunkte für FRITZ!Box-Thermostate.
+ *
+ * Nur für Administration/Verwaltung: die Endpunkte setzen Temperaturen und
+ * lassen das Backend über POST /heating/connect Verbindungen zu beliebigen
+ * URLs aufbauen (sonst SSRF-Vektor für nicht angemeldete Aufrufer).
+ */
 @ApiTags('Heating')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(RoleEnum.admin, RoleEnum.verwaltung)
 @Controller('heating')
 export class HeatingController {
   constructor(private readonly heatingService: HeatingService) {}

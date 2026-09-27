@@ -28,6 +28,32 @@ class EnvironmentVariablesValidator {
   HEATING_SCHEDULER_ENABLED!: string;
 }
 
+const HEATING_ENV_KEYS = [
+  'HEATING_SEASON_START',
+  'HEATING_SEASON_END',
+  'HEATING_HALLWAY_ROOM_ID',
+  'HEATING_SCHEDULER_ENABLED',
+] as const;
+
+/*
+ * Leere Werte (z. B. `HEATING_HALLWAY_ROOM_ID=` aus env-example) gelten als
+ * nicht gesetzt. @IsOptional() überspringt nur null/undefined, ein leerer
+ * String würde sonst die Validierung scheitern lassen und den Start des
+ * Backends verhindern.
+ */
+export function readHeatingEnv(
+  env: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  const result: Record<string, string | undefined> = {};
+
+  for (const key of HEATING_ENV_KEYS) {
+    const value = env[key]?.trim();
+    result[key] = value ? value : undefined;
+  }
+
+  return result;
+}
+
 export function parseHallwayRoomIds(value: string | undefined): number[] {
   if (!value || !value.trim()) {
     return [];
@@ -40,12 +66,14 @@ export function parseHallwayRoomIds(value: string | undefined): number[] {
 }
 
 export default registerAs<HeatingConfig>('heating', () => {
-  validateConfig(process.env, EnvironmentVariablesValidator);
+  const env = readHeatingEnv(process.env);
+
+  validateConfig(env, EnvironmentVariablesValidator);
 
   return {
-    seasonStart: process.env.HEATING_SEASON_START,
-    seasonEnd: process.env.HEATING_SEASON_END,
-    hallwayRoomIds: parseHallwayRoomIds(process.env.HEATING_HALLWAY_ROOM_ID),
-    schedulerEnabled: process.env.HEATING_SCHEDULER_ENABLED !== 'false',
+    seasonStart: env.HEATING_SEASON_START,
+    seasonEnd: env.HEATING_SEASON_END,
+    hallwayRoomIds: parseHallwayRoomIds(env.HEATING_HALLWAY_ROOM_ID),
+    schedulerEnabled: env.HEATING_SCHEDULER_ENABLED !== 'false',
   };
 });

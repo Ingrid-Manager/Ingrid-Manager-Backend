@@ -479,6 +479,76 @@ describe('HeatingScheduler', () => {
     });
   });
 
+  describe('missed cool window', () => {
+    it('should cool after a FRITZ!Box outage longer than the cool window', async () => {
+      rooms[0].heated = true;
+      events = [eventAt(1, 1, -61, 60)]; // endete vor 1 Minute
+      unreachable.add(1);
+
+      for (let minute = 0; minute < 10; minute++) {
+        await scheduler.run(new Date(NOW.getTime() + minute * MINUTE));
+      }
+      expect(heatedOf(1)).toBe(true);
+      expect(commands).toEqual([]);
+
+      unreachable.clear();
+      await scheduler.run(new Date(NOW.getTime() + 10 * MINUTE));
+      await scheduler.run(new Date(NOW.getTime() + 11 * MINUTE));
+
+      expect(heatedOf(1)).toBe(false);
+      expect(commands).toEqual([
+        { locationId: 1, ain: 'A-1', temperature: 16 },
+      ]);
+    });
+
+    it('should cool when the bridging follow-up event is deleted later', async () => {
+      rooms[0].heated = true;
+      events = [eventAt(1, 1, -61, 60), eventAt(2, 1, 60, 60)];
+
+      for (let minute = 0; minute < 10; minute++) {
+        await scheduler.run(new Date(NOW.getTime() + minute * MINUTE));
+      }
+      expect(heatedOf(1)).toBe(true);
+
+      events = [events[0]]; // Folgetermin gelöscht
+      await scheduler.run(new Date(NOW.getTime() + 10 * MINUTE));
+
+      expect(heatedOf(1)).toBe(false);
+      expect(commands).toEqual([
+        { locationId: 1, ain: 'A-1', temperature: 16 },
+      ]);
+    });
+
+    it('should cool rooms after a backend restart', async () => {
+      // Zustand aus der DB: beheizt, Termin seit einer Stunde beendet
+      rooms[0].heated = true;
+      events = [eventAt(1, 1, -120, 60)];
+
+      await scheduler.run(NOW);
+
+      expect(heatedOf(1)).toBe(false);
+      expect(commands).toEqual([
+        { locationId: 1, ain: 'A-1', temperature: 16 },
+      ]);
+    });
+
+    it('should release the hallway once the stuck room was cooled', async () => {
+      config = { ...config, hallwayRoomIds: [3] };
+      rooms[0].heated = true;
+      rooms[2].heated = true;
+      events = [eventAt(1, 1, -120, 60)];
+
+      await scheduler.run(NOW);
+
+      expect(commands).toEqual([
+        { locationId: 1, ain: 'A-1', temperature: 16 },
+        { locationId: 1, ain: 'A-3', temperature: 15 },
+      ]);
+      expect(heatedOf(1)).toBe(false);
+      expect(heatedOf(3)).toBe(false);
+    });
+  });
+
   describe('error handling', () => {
     it('should report database errors without throwing', async () => {
       calendarEventsService.findActiveHeatingEvents.mockRejectedValueOnce(

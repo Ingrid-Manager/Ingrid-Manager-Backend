@@ -133,6 +133,22 @@ export interface RoomDecision {
  * Erfüllen mehrere Termine HEAT oder COOL, gewinnt der Termin mit dem
  * spätesten Start (e*). Nur e* bestimmt die Entscheidung. Eine Aktion wird
  * nur bei einem tatsächlichen Zustandswechsel erzeugt (Idempotenz).
+ *
+ * Ergänzungen zur Grundregel:
+ *
+ *   - HEAT hat Vorrang vor COOL: solange ein Termin des Raums läuft bzw.
+ *     sich in der Vorlaufzeit befindet, wird nie abgesenkt (e* wird dann
+ *     unter den HEAT-Kandidaten bestimmt). Das verhindert ein Absenken
+ *     während eines noch laufenden, früher begonnenen Termins.
+ *
+ *   - Rückfallregel (NO_ACTIVE_EVENT): Ein Raum mit Vorlaufzeit, der noch
+ *     als beheizt markiert ist, obwohl weder ein Termin heizt noch ein
+ *     Folgetermin überbrückt, wird abgesenkt. Damit bleibt kein Raum
+ *     dauerhaft beheizt, wenn das 5-Minuten-Absenkfenster verpasst wurde
+ *     (FRITZ!Box/Thermostat nicht erreichbar, Neustart des Backends,
+ *     gelöschter oder verschobener Folge- bzw. laufender Termin, manuell
+ *     gesetztes `heated`). Ein fehlgeschlagener COOL-Befehl wird so in
+ *     jedem Lauf erneut versucht, bis er erfolgreich war.
  */
 export function evaluateRoom(
   room: HeatingRoom,
@@ -141,28 +157,23 @@ export function evaluateRoom(
 ): RoomDecision {
   const bridged = isBridged(roomEvents, now);
 
-  let winner: HeatingEvent | null = null;
-  let heat = false;
-  let cool = false;
+  const heatCandidates = roomEvents.filter((event) =>
+    canHeat(room, event, now),
+  );
+  const coolCandidates =
+    heatCandidates.length > 0
+      ? []
+      : roomEvents.filter((event) => canCool(room, event, now, bridged));
 
-  for (const event of roomEvents) {
-    const eventHeats = canHeat(room, event, now);
-    const eventCools = !eventHeats && canCool(room, event, now, bridged);
-
-    if (!eventHeats && !eventCools) {
-      continue;
-    }
-
-    if (!winner || event.start.getTime() > winner.start.getTime()) {
-      winner = event;
-      heat = eventHeats;
-      cool = eventCools;
-    }
-  }
+  const winner = latestStart(
+    heatCandidates.length > 0 ? heatCandidates : coolCandidates,
+  );
+  const heat = winner !== null && heatCandidates.length > 0;
+  const cool = winner !== null && !heat;
 
   let action: HeatingAction | null = null;
 
-  if (winner && heat && !room.heated) {
+  if (heat && !room.heated) {
     action = {
       roomId: room.id,
       locationId: room.locationId,
@@ -172,7 +183,7 @@ export function evaluateRoom(
       eventId: winner.id,
       reason: 'EVENT_PRELIM',
     };
-  } else if (winner && cool && room.heated) {
+  } else if (cool && room.heated) {
     action = {
       roomId: room.id,
       locationId: room.locationId,
@@ -181,6 +192,16 @@ export function evaluateRoom(
       avmId: room.avmId,
       eventId: winner.id,
       reason: 'EVENT_ENDED',
+    };
+  } else if (!heat && !bridged && room.heated && hasPrelimTime(room)) {
+    action = {
+      roomId: room.id,
+      locationId: room.locationId,
+      action: 'COOL',
+      targetTemperature: room.emptyTemp,
+      avmId: room.avmId,
+      eventId: null,
+      reason: 'NO_ACTIVE_EVENT',
     };
   }
 
@@ -193,6 +214,16 @@ export function evaluateRoom(
     action,
     heatedAfter: action ? action.action === 'HEAT' : room.heated,
   };
+}
+
+function latestStart(events: HeatingEvent[]): HeatingEvent | null {
+  return events.reduce<HeatingEvent | null>(
+    (latest, event) =>
+      !latest || event.start.getTime() > latest.start.getTime()
+        ? event
+        : latest,
+    null,
+  );
 }
 
 export interface HallwayDecision {

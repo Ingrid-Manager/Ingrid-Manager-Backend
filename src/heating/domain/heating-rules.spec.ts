@@ -291,6 +291,108 @@ describe('heating rules', () => {
       expect(decision.event?.id).toBe(3);
       expect(decision.action?.eventId).toBe(3);
     });
+
+    it('should never cool while an earlier started event is still running', () => {
+      // e1 läuft 09:00-12:00, e2 (10:00-10:30) ist gerade beendet und hat
+      // den späteren Start -> trotzdem kein Absenken, solange e1 läuft.
+      const decision = evaluateRoom(
+        room({ heated: true }),
+        [event(1, -60, 180), event(2, -31, 30)],
+        NOW,
+      );
+
+      expect(decision.heat).toBe(true);
+      expect(decision.event?.id).toBe(1);
+      expect(decision.action).toBeNull();
+      expect(decision.heatedAfter).toBe(true);
+    });
+
+    it('should never cool while the next event is within the prelim time', () => {
+      // Vorlauf 120 Minuten, Folgetermin in 100 Minuten (außerhalb BRIDGE)
+      const decision = evaluateRoom(
+        room({ heated: true, prelimTime: 120 }),
+        [event(1, -62, 60), event(2, 100, 60)],
+        NOW,
+      );
+
+      expect(decision.bridged).toBe(false);
+      expect(decision.action).toBeNull();
+    });
+  });
+
+  describe('evaluateRoom fallback (NO_ACTIVE_EVENT)', () => {
+    it('should cool a heated room after the cool window was missed', () => {
+      // Termin seit 30 Minuten beendet (5-Minuten-Fenster verpasst)
+      const decision = evaluateRoom(
+        room({ heated: true }),
+        [event(1, -90, 60)],
+        NOW,
+      );
+
+      expect(decision.action).toEqual({
+        roomId: 1,
+        locationId: 10,
+        action: 'COOL',
+        targetTemperature: 16,
+        avmId: '11111 0000001',
+        eventId: null,
+        reason: 'NO_ACTIVE_EVENT',
+      });
+      expect(decision.heatedAfter).toBe(false);
+    });
+
+    it('should cool a heated room without any events', () => {
+      const decision = evaluateRoom(room({ heated: true }), [], NOW);
+
+      expect(decision.action?.action).toBe('COOL');
+      expect(decision.action?.reason).toBe('NO_ACTIVE_EVENT');
+    });
+
+    it('should cool when an event ends exactly now', () => {
+      const decision = evaluateRoom(
+        room({ heated: true }),
+        [event(1, -60, 60)],
+        NOW,
+      );
+
+      expect(decision.action?.action).toBe('COOL');
+    });
+
+    it('should prefer the regular COOL reason within the cool window', () => {
+      const decision = evaluateRoom(
+        room({ heated: true }),
+        [event(1, -62, 60)],
+        NOW,
+      );
+
+      expect(decision.action?.reason).toBe('EVENT_ENDED');
+    });
+
+    it('should not cool a heated room while bridged', () => {
+      const decision = evaluateRoom(
+        room({ heated: true, prelimTime: 15 }),
+        [event(2, 45, 60)],
+        NOW,
+      );
+
+      expect(decision.bridged).toBe(true);
+      expect(decision.action).toBeNull();
+    });
+
+    it('should not touch rooms without prelim time', () => {
+      const decision = evaluateRoom(
+        room({ heated: true, prelimTime: 0 }),
+        [],
+        NOW,
+      );
+
+      expect(decision.action).toBeNull();
+      expect(decision.heatedAfter).toBe(true);
+    });
+
+    it('should not act on rooms that are not heated', () => {
+      expect(evaluateRoom(room({ heated: false }), [], NOW).action).toBeNull();
+    });
   });
 
   describe('evaluateHallway', () => {

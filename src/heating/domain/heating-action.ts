@@ -26,6 +26,7 @@ export interface HeatingAction {
 export type HeatingActionReason =
   | 'EVENT_PRELIM'
   | 'EVENT_ENDED'
+  | 'NO_ACTIVE_EVENT'
   | 'HALLWAY_OCCUPIED'
   | 'HALLWAY_EMPTY'
   | 'SEASON_END';
