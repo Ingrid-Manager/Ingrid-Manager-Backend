@@ -32,6 +32,7 @@ import { ResourceEventsModule } from './resource-events/resource-events.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module';
+import { HeatingModule } from './heating/heating.module';
 import { HeatingRulesModule } from './heating-rules/heating-rules.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
@@ -84,6 +85,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     ResourceEventsModule,
     CryptoModule,
     OwnershipTransferModule,
+    HeatingModule,
     HeatingRulesModule,
   ],
 })
