@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ConflictException } from '@nestjs/common';
 
-import { HeatingService } from './heating.service';
+import { HeatingRulesService } from './heating-rules.service';
 import { Room } from '../rooms/infrastructure/relational/persistence/entities/room.entity';
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { HEATING_COMMAND_DISPATCHER } from './dispatcher/heating-command-dispatcher';
@@ -31,8 +31,8 @@ function makeRoom(overrides: Partial<Room>): Room {
   } as Room;
 }
 
-describe('HeatingService', () => {
-  let service: HeatingService;
+describe('HeatingRulesService', () => {
+  let service: HeatingRulesService;
   let rooms: Room[];
   let events: Partial<CalendarEvent>[];
   let config: HeatingConfig;
@@ -67,7 +67,7 @@ describe('HeatingService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        HeatingService,
+        HeatingRulesService,
         { provide: getRepositoryToken(Room), useValue: roomRepo },
         {
           provide: getRepositoryToken(CalendarEvent),
@@ -85,7 +85,7 @@ describe('HeatingService', () => {
       ],
     }).compile();
 
-    service = module.get(HeatingService);
+    service = module.get(HeatingRulesService);
   });
 
   it('heizt Raum und Flur auf und speichert den Zustand', async () => {

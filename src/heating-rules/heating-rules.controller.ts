@@ -3,17 +3,17 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../roles/roles.decorator';
 import { RoleEnum } from '../roles/roles.enum';
 import { RolesGuard } from '../roles/roles.guard';
-import { HeatingService } from './heating.service';
+import { HeatingRulesService } from './heating-rules.service';
 import { HeatingPreviewQueryDto } from './application/dto/heating-preview-query.dto';
 
 @Roles(RoleEnum.admin, RoleEnum.verwaltung)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
-  path: 'heating',
+  path: 'heating-rules',
   version: '1',
 })
-export class HeatingController {
-  constructor(private readonly service: HeatingService) {}
+export class HeatingRulesController {
+  constructor(private readonly service: HeatingRulesService) {}
 
   /** Saison-Konfiguration (.env) und aktueller heated-Zustand je Raum. */
   @Get('status')
