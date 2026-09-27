@@ -28,7 +28,6 @@ import { SeriesEventsModule } from './series-events/series-events.module';
 import { SettingsModule } from './settings/settings.module';
 import { ResourceModule } from './resources/resource.module';
 import { ResourceEventsModule } from './resource-events/resource-events.module';
-//import { AvmTestModule } from './avm-test/avm-test.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module';
@@ -63,7 +62,6 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       }),
     }),
 
-    //AvmTestModule,
     AuditLogModule,
     UsersModule,
     AuthModule,
