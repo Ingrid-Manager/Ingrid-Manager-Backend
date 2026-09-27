@@ -8,6 +8,6 @@ import { AvmLocation } from './infrastructure/relational/persistence/entities/av
   imports: [TypeOrmModule.forFeature([AvmLocation])],
   providers: [AvmLocationsService],
   controllers: [AvmLocationsController],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, AvmLocationsService],
 })
 export class AvmLocationsModule {}

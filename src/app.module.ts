@@ -28,6 +28,7 @@ import { ResourceModule } from './resources/resource.module';
 import { ResourceEventsModule } from './resource-events/resource-events.module';
 //import { AvmTestModule } from './avm-test/avm-test.module';
 import { CryptoModule } from './crypto/crypto.module';
+import { HeatingModule } from './heating/heating.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -76,6 +77,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     ResourceModule,
     ResourceEventsModule,
     CryptoModule,
+    HeatingModule,
   ],
 })
 export class AppModule {}
