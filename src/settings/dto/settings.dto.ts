@@ -8,4 +8,6 @@ export class SettingsDto {
   techLastName: string;
   techEmail: string;
   smtpUser: string;
+  heatingSeasonStart: string | null;
+  heatingSeasonEnd: string | null;
 }

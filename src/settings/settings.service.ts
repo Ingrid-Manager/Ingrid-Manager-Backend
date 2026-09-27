@@ -26,6 +26,14 @@ export class SettingsService {
       }),
       techEmail: this.configService.get<string>('TECH_EMAIL', { infer: true }),
       smtpUser: this.configService.get<string>('mail.user', { infer: true }),
+      heatingSeasonStart:
+        this.configService.get<string | null>('heating.seasonStart', {
+          infer: true,
+        }) ?? null,
+      heatingSeasonEnd:
+        this.configService.get<string | null>('heating.seasonEnd', {
+          infer: true,
+        }) ?? null,
     };
   }
 
