@@ -1,9 +1,9 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateAvmLocationDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  title?: string;
 
   @IsOptional()
   @IsString()
@@ -16,4 +16,8 @@ export class CreateAvmLocationDto {
   @IsOptional()
   @IsString()
   ahapassword?: string;
+
+  @IsOptional()
+  @IsString()
+  ahasid?: string;
 }

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateAvmLocationDto {
   @IsNumber()
@@ -6,7 +6,6 @@ export class UpdateAvmLocationDto {
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   title?: string;
 
   @IsOptional()
@@ -17,8 +16,11 @@ export class UpdateAvmLocationDto {
   @IsString()
   ahauser?: string;
 
-  /** Only applied when non-empty; an empty value keeps the stored password. */
   @IsOptional()
   @IsString()
   ahapassword?: string;
+
+  @IsOptional()
+  @IsString()
+  ahasid?: string;
 }
