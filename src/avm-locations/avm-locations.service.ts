@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AvmLocation } from './infrastructure/relational/persistence/entities/avm-location.entity';
 import { Repository } from 'typeorm';
@@ -7,12 +11,15 @@ import { AvmLoactionMapper } from './infrastructure/application/mapper/avm-locat
 import { UpdateAvmLocationDto } from './infrastructure/application/dto/update-avm-location.dto';
 import { AvmConnection } from '../libs/avm-aha-client';
 import { CryptoService } from '../crypto/crypto.service';
+import { Room } from '../rooms/infrastructure/relational/persistence/entities/room.entity';
 
 @Injectable()
 export class AvmLocationsService {
   constructor(
     @InjectRepository(AvmLocation)
     private repo: Repository<AvmLocation>,
+    @InjectRepository(Room)
+    private roomRepo: Repository<Room>,
     private readonly cryptoService: CryptoService,
   ) {}
 
@@ -24,7 +31,6 @@ export class AvmLocationsService {
       ahapassword: dto.ahapassword
         ? this.cryptoService.encrypt(dto.ahapassword)
         : undefined,
-      ahasid: dto.ahasid,
     });
 
     const saved = await this.repo.save(entity);
@@ -69,12 +75,34 @@ export class AvmLocationsService {
       entity.ahapassword = this.cryptoService.encrypt(dto.ahapassword);
     }
 
-    if (dto.ahasid !== undefined) {
-      entity.ahasid = dto.ahasid;
-    }
-
     const saved = await this.repo.save(entity);
     return AvmLoactionMapper.toResponse(saved);
+  }
+
+  async remove(id: number): Promise<void> {
+    const entity = await this.repo.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!entity) {
+      throw new NotFoundException('AVM Location not found');
+    }
+
+    // Soft-deleted rooms still reference the location via foreign key.
+    const roomCount = await this.roomRepo.count({
+      where: { locationid: id },
+      withDeleted: true,
+    });
+
+    if (roomCount > 0) {
+      throw new ConflictException(
+        `AVM Location ${id} is still used by ${roomCount} room(s)`,
+      );
+    }
+
+    await this.repo.delete(id);
   }
 
   async getConnection(id: number): Promise<AvmConnection> {

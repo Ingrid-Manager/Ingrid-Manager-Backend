@@ -1,7 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
   UseGuards,
@@ -43,5 +48,11 @@ export class AvmLocationsController {
     dto: UpdateAvmLocationDto,
   ) {
     return this.service.update(dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.service.remove(id);
   }
 }

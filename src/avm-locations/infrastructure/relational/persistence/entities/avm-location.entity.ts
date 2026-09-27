@@ -8,15 +8,15 @@ export class AvmLocation {
   @Column()
   title!: string;
 
-  @Column()
-  ahaurl?: string;
+  @Column({ type: String, nullable: true })
+  ahaurl?: string | null;
 
-  @Column()
-  ahauser?: string;
+  @Column({ type: String, nullable: true })
+  ahauser?: string | null;
 
-  @Column()
-  ahapassword?: string;
+  @Column({ type: String, nullable: true })
+  ahapassword?: string | null;
 
-  @Column()
-  ahasid?: string;
+  @Column({ type: String, nullable: true })
+  ahasid?: string | null;
 }
