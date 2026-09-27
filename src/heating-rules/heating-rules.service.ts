@@ -41,8 +41,8 @@ export interface HeatingRunOptions {
 }
 
 @Injectable()
-export class HeatingService {
-  private readonly logger = new Logger(HeatingService.name);
+export class HeatingRulesService {
+  private readonly logger = new Logger(HeatingRulesService.name);
   private running = false;
 
   constructor(

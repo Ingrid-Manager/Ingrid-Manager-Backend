@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Room } from '../rooms/infrastructure/relational/persistence/entities/room.entity';
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
-import { HeatingController } from './heating.controller';
-import { HeatingService } from './heating.service';
+import { HeatingRulesController } from './heating-rules.controller';
+import { HeatingRulesService } from './heating-rules.service';
 import {
   HEATING_COMMAND_DISPATCHER,
   LoggingHeatingCommandDispatcher,
@@ -11,9 +11,9 @@ import {
 
 @Module({
   imports: [TypeOrmModule.forFeature([Room, CalendarEvent])],
-  controllers: [HeatingController],
+  controllers: [HeatingRulesController],
   providers: [
-    HeatingService,
+    HeatingRulesService,
     // Bis das Fritzbox-Modul fertig ist, werden die Schaltbefehle nur
     // protokolliert. Anschließend hier die Fritzbox-Implementierung von
     // HeatingCommandDispatcher eintragen.
@@ -22,6 +22,6 @@ import {
       useClass: LoggingHeatingCommandDispatcher,
     },
   ],
-  exports: [HeatingService],
+  exports: [HeatingRulesService],
 })
-export class HeatingModule {}
+export class HeatingRulesModule {}

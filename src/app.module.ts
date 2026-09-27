@@ -5,7 +5,7 @@ import databaseConfig from './database/config/database.config';
 import authConfig from './auth/config/auth.config';
 import appConfig from './config/app.config';
 import mailConfig from './mail/config/mail.config';
-import heatingConfig from './heating/config/heating.config';
+import heatingConfig from './heating-rules/config/heating.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -32,7 +32,7 @@ import { ResourceEventsModule } from './resource-events/resource-events.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module';
-import { HeatingModule } from './heating/heating.module';
+import { HeatingRulesModule } from './heating-rules/heating-rules.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -84,7 +84,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     ResourceEventsModule,
     CryptoModule,
     OwnershipTransferModule,
-    HeatingModule,
+    HeatingRulesModule,
   ],
 })
 export class AppModule {}

@@ -4,9 +4,9 @@ import { HeatingAction } from '../domain/heating-rules';
 /**
  * Injection-Token für die Anbindung an die Fritzbox.
  *
- * Das HeatingModule wertet nur die Heizregeln aus und übergibt die daraus
+ * Das HeatingRulesModule wertet nur die Heizregeln aus und übergibt die daraus
  * resultierenden Schaltbefehle an diesen Dispatcher. Sobald das
- * Fritzbox-Modul fertig ist, wird im HeatingModule lediglich der Provider
+ * Fritzbox-Modul fertig ist, wird im HeatingRulesModule lediglich der Provider
  * für dieses Token ausgetauscht (z. B. `useClass: FritzboxHeatingDispatcher`).
  */
 export const HEATING_COMMAND_DISPATCHER = Symbol('HEATING_COMMAND_DISPATCHER');
