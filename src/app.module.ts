@@ -33,6 +33,7 @@ import { CryptoModule } from './crypto/crypto.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OwnershipTransferModule } from './ownership-transfer/ownership-transfer.module';
 import { HeatingRulesModule } from './heating-rules/heating-rules.module';
+import { HeatingModule } from './heating/heating.module';
 
 const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   useClass: TypeOrmConfigService,
@@ -85,6 +86,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     CryptoModule,
     OwnershipTransferModule,
     HeatingRulesModule,
+    HeatingModule,
   ],
 })
 export class AppModule {}

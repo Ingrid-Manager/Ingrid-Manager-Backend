@@ -9,6 +9,6 @@ import { Room } from '../rooms/infrastructure/relational/persistence/entities/ro
   imports: [TypeOrmModule.forFeature([AvmLocation, Room])],
   providers: [AvmLocationsService],
   controllers: [AvmLocationsController],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, AvmLocationsService],
 })
 export class AvmLocationsModule {}
