@@ -67,6 +67,8 @@ export class RoomsService {
    */
   async findAllForHeating(): Promise<Room[]> {
     return this.repo.find({
+      // Location-Titel für das Aktivitätsprotokoll der Heizungssteuerung
+      relations: ['location'],
       order: {
         id: 'ASC',
       },

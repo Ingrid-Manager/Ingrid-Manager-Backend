@@ -7,6 +7,7 @@ import { CalendarEventsModule } from '../calendar-events/calendar-events.module'
 import { RoomsModule } from '../rooms/rooms.module';
 import { HeatingController } from './heating.controller';
 import { HeatingService } from './heating.service';
+import { HeatingAuditService } from './heating-audit.service';
 import {
   FRITZBOX_MANAGER,
   FritzBoxConnectionManager,
@@ -22,6 +23,7 @@ import {
   controllers: [HeatingController],
   providers: [
     HeatingService,
+    HeatingAuditService,
     FritzBoxConnectionManager,
     HeatingScheduler,
     {

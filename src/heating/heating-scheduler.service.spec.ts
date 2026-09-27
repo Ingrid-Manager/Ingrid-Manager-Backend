@@ -8,6 +8,13 @@ import { FritzBoxConnectionManager } from './fritzbox-connection-manager.service
 import { HeatingConfig } from './config/heating-config.type';
 import { HeatingError, HeatingErrorCode } from './domain/heating-error';
 import { HeatingClock, HeatingScheduler } from './heating-scheduler.service';
+import { HeatingAuditService } from './heating-audit.service';
+import {
+  AuditLogParams,
+  AuditLogService,
+} from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-action.enum';
+import { AuditService } from '../audit-log/audit-service.enum';
 
 /*
  * Integrationstest der Heizungssteuerung: echter Scheduler, echte
@@ -28,6 +35,7 @@ type RoomRow = {
   empty_temp: number;
   heated: boolean;
   avm_id: string | null;
+  location?: { title: string };
 };
 
 type EventRow = {
@@ -64,17 +72,30 @@ class FakeFritzBox {
   };
 }
 
-const roomRow = (overrides: Partial<RoomRow>): RoomRow => ({
-  id: 1,
-  title: 'Raum',
-  locationid: 1,
-  prelim_time: 60,
-  comfort_temp: 21,
-  empty_temp: 16,
-  heated: false,
-  avm_id: null,
-  ...overrides,
-});
+const LOCATION_TITLES: Record<number, string> = {
+  1: 'Gemeindehaus A',
+  2: 'Gemeindehaus B',
+};
+
+const roomRow = (overrides: Partial<RoomRow>): RoomRow => {
+  const row: RoomRow = {
+    id: 1,
+    title: 'Raum',
+    locationid: 1,
+    prelim_time: 60,
+    comfort_temp: 21,
+    empty_temp: 16,
+    heated: false,
+    avm_id: null,
+    ...overrides,
+  };
+
+  if (!row.location && LOCATION_TITLES[row.locationid]) {
+    row.location = { title: LOCATION_TITLES[row.locationid] };
+  }
+
+  return row;
+};
 
 const eventAt = (
   id: number,
@@ -104,6 +125,7 @@ describe('HeatingScheduler', () => {
   let calendarEventsService: { findActiveHeatingEvents: jest.Mock };
   let connections: { getConnection: jest.Mock; invalidate: jest.Mock };
   let scheduler: HeatingScheduler;
+  let auditEntries: AuditLogParams[];
 
   const heatedOf = (id: number) => rooms.find((room) => room.id === id).heated;
 
@@ -190,6 +212,14 @@ describe('HeatingScheduler', () => {
     };
     const clock: HeatingClock = { now: () => clockNow };
 
+    auditEntries = [];
+    const auditLogService = {
+      log: jest.fn((params: AuditLogParams) => {
+        auditEntries.push(params);
+        return Promise.resolve();
+      }),
+    };
+
     const heatingService = new HeatingService(
       connections as unknown as FritzBoxConnectionManager,
     );
@@ -200,8 +230,12 @@ describe('HeatingScheduler', () => {
       calendarEventsService as unknown as CalendarEventsService,
       heatingService,
       clock,
+      new HeatingAuditService(auditLogService as unknown as AuditLogService),
     );
   });
+
+  const heatingAudit = () =>
+    auditEntries.filter((entry) => entry.service === AuditService.HEATING);
 
   describe('season check', () => {
     it('should run the heating calculation within the season', async () => {
@@ -546,6 +580,132 @@ describe('HeatingScheduler', () => {
       ]);
       expect(heatedOf(1)).toBe(false);
       expect(heatedOf(3)).toBe(false);
+    });
+  });
+
+  describe('audit log', () => {
+    it('should log "Raum wurde aufgeheizt" and "Raum wurde abgesenkt"', async () => {
+      events = [eventAt(1, 1, 30, 60)];
+      await scheduler.run(NOW);
+
+      events = [eventAt(1, 1, -62, 60)];
+      await scheduler.run(new Date(NOW.getTime() + MINUTE));
+
+      expect(heatingAudit().map((entry) => entry.action)).toEqual([
+        AuditAction.ROOM_HEATED,
+        AuditAction.ROOM_COOLED,
+      ]);
+      expect(heatingAudit()[0]).toMatchObject({
+        user: null,
+        entityType: 'room',
+        entityId: 1,
+      });
+      expect(heatingAudit()[0].summary).toContain(
+        'Raum "Wohnzimmer" (Gemeindehaus A) wurde aufgeheizt auf 21 °C',
+      );
+      expect(heatingAudit()[1].summary).toContain(
+        'Raum "Wohnzimmer" (Gemeindehaus A) wurde abgesenkt auf 16 °C',
+      );
+    });
+
+    it('should not log anything when nothing changes', async () => {
+      rooms[0].heated = true;
+      events = [eventAt(1, 1, -10, 60)];
+
+      await scheduler.run(NOW);
+      await scheduler.run(new Date(NOW.getTime() + MINUTE));
+
+      expect(heatingAudit()).toEqual([]);
+    });
+
+    it('should log an unreachable FRITZ!Box once and its recovery', async () => {
+      unreachable.add(1);
+      events = [eventAt(1, 1, 30, 60), eventAt(2, 4, 30, 60)];
+
+      for (let minute = 0; minute < 5; minute++) {
+        await scheduler.run(new Date(NOW.getTime() + minute * MINUTE));
+      }
+
+      const errors = heatingAudit().filter(
+        (entry) => entry.action === AuditAction.HEATING_ERROR,
+      );
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatchObject({
+        entityType: 'avm-location',
+        entityId: 1,
+      });
+      expect(errors[0].summary).toContain(
+        'FRITZ!Box der Location "Gemeindehaus A" ist nicht erreichbar',
+      );
+      expect(errors[0].summary).toContain('"Wohnzimmer" (Aufheizen auf 21 °C)');
+      expect(errors[0].changes.errorCode.new).toBe(
+        HeatingErrorCode.FRITZBOX_UNREACHABLE,
+      );
+      // Location B wurde trotzdem aufgeheizt
+      expect(
+        heatingAudit().filter(
+          (entry) => entry.action === AuditAction.ROOM_HEATED,
+        ),
+      ).toHaveLength(1);
+
+      unreachable.clear();
+      await scheduler.run(new Date(NOW.getTime() + 5 * MINUTE));
+
+      expect(
+        heatingAudit()
+          .slice(-2)
+          .map((entry) => entry.action),
+      ).toEqual([AuditAction.ROOM_HEATED, AuditAction.HEATING_RECOVERED]);
+      expect(heatingAudit().slice(-1)[0].summary).toContain(
+        'FRITZ!Box der Location "Gemeindehaus A" ist wieder erreichbar',
+      );
+    });
+
+    it('should log a failed thermostat command for the room', async () => {
+      rooms[0].avm_id = 'A-404';
+      events = [eventAt(1, 1, 30, 60)];
+
+      await scheduler.run(NOW);
+      await scheduler.run(new Date(NOW.getTime() + MINUTE));
+
+      const errors = heatingAudit().filter(
+        (entry) => entry.action === AuditAction.HEATING_ERROR,
+      );
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatchObject({ entityType: 'room', entityId: 1 });
+      expect(errors[0].summary).toContain(
+        'Heizbefehl für Raum "Wohnzimmer" fehlgeschlagen: Thermostat A-404',
+      );
+    });
+
+    it('should log configuration errors only once', async () => {
+      config = { ...config, seasonEnd: 'kaputt' };
+
+      await scheduler.run(NOW);
+      await scheduler.run(new Date(NOW.getTime() + MINUTE));
+
+      const errors = heatingAudit().filter(
+        (entry) => entry.action === AuditAction.HEATING_ERROR,
+      );
+      expect(errors).toHaveLength(1);
+      expect(errors[0].summary).toContain('Konfigurationsfehler');
+    });
+
+    it('should log database errors', async () => {
+      calendarEventsService.findActiveHeatingEvents.mockRejectedValueOnce(
+        new Error('db down'),
+      );
+
+      await scheduler.run(NOW);
+
+      expect(heatingAudit()).toEqual([
+        expect.objectContaining({
+          action: AuditAction.HEATING_ERROR,
+          summary: expect.stringContaining(
+            'Kalender/Datenbank konnte nicht gelesen werden',
+          ),
+        }),
+      ]);
     });
   });
 

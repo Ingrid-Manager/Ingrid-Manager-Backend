@@ -8,5 +8,6 @@ export enum AuditService {
   USERS = 'users',
   AUTH = 'auth',
   REORGANIZATION = 'reorganization',
+  HEATING = 'heating',
   SYSTEM = 'system',
 }

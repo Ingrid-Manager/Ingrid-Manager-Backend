@@ -8,6 +8,10 @@ import { Room } from '../rooms/infrastructure/relational/persistence/entities/ro
 import { CalendarEventsService } from '../calendar-events/calendar-events.service';
 import { CalendarEvent } from '../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { HeatingService } from './heating.service';
+import {
+  HeatingAuditLabels,
+  HeatingAuditService,
+} from './heating-audit.service';
 import { HeatingConfig } from './config/heating-config.type';
 import { HeatingAction, HeatingActionResult } from './domain/heating-action';
 import {
@@ -41,6 +45,8 @@ export interface HeatingRunResult {
   actions: HeatingAction[];
   results: HeatingActionResult[];
   errors: HeatingError[];
+  /* Anzeigenamen für das Aktivitätsprotokoll */
+  labels: HeatingAuditLabels;
 }
 
 /*
@@ -57,6 +63,7 @@ export interface HeatingRunResult {
  *   7. Aktionen über den HeatingService (FRITZ!Box der Location) ausführen
  *      und den neuen Raumzustand (heated) persistieren
  *   8. Fehler einer Location blockieren andere Locations nicht
+ *   9. Zustandswechsel und Fehler ins Aktivitätsprotokoll schreiben
  */
 @Injectable()
 export class HeatingScheduler {
@@ -73,6 +80,7 @@ export class HeatingScheduler {
     private readonly heatingService: HeatingService,
     @Inject(HEATING_CLOCK)
     private readonly clock: HeatingClock,
+    private readonly heatingAudit: HeatingAuditService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE, { name: HEATING_CRON_JOB })
@@ -132,8 +140,26 @@ export class HeatingScheduler {
       actions: [],
       results: [],
       errors: [],
+      labels: { rooms: new Map(), locations: new Map(), events: new Map() },
     };
 
+    await this.execute(now, result);
+
+    // 9. Zustandswechsel und Fehler ins Aktivitätsprotokoll schreiben
+    try {
+      await this.heatingAudit.record(result);
+    } catch (error) {
+      this.logger.error(
+        `Heating audit log could not be written: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    return result;
+  }
+
+  private async execute(now: Date, result: HeatingRunResult): Promise<void> {
     try {
       const config = this.getConfig();
 
@@ -147,12 +173,12 @@ export class HeatingScheduler {
             `(got "${config.seasonStart ?? ''}" / "${config.seasonEnd ?? ''}", expected MM-DD)`,
         );
 
-        return result;
+        return;
       }
 
       result.inSeason = isInSeason(now, season);
 
-      const rooms = await this.loadRooms();
+      const rooms = await this.loadRooms(result.labels);
 
       if (!result.inSeason) {
         // Einmaliges Absenken beim Verlassen der Heizsaison (idempotent über
@@ -161,7 +187,11 @@ export class HeatingScheduler {
       } else {
         // 2. Aktive Termine laden
         const window = eventWindow(rooms, now);
-        const events = await this.loadEvents(window.from, window.to);
+        const events = await this.loadEvents(
+          window.from,
+          window.to,
+          result.labels,
+        );
 
         // 3.-5. Zuordnung, Raumregeln, Flur-Sonderregel
         const plan = planHeating({
@@ -193,8 +223,6 @@ export class HeatingScheduler {
         toHeatingError(error, HeatingErrorCode.DATA_SOURCE_ERROR),
       );
     }
-
-    return result;
   }
 
   private async executeActions(
@@ -339,7 +367,7 @@ export class HeatingScheduler {
     return hallways;
   }
 
-  private async loadRooms(): Promise<HeatingRoom[]> {
+  private async loadRooms(labels: HeatingAuditLabels): Promise<HeatingRoom[]> {
     let rooms: Room[];
 
     try {
@@ -353,6 +381,14 @@ export class HeatingScheduler {
       );
     }
 
+    for (const room of rooms) {
+      labels.rooms.set(room.id, room.title);
+
+      if (room.location?.title) {
+        labels.locations.set(room.locationid, room.location.title);
+      }
+    }
+
     return rooms.map((room) => ({
       id: room.id,
       locationId: room.locationid,
@@ -364,7 +400,11 @@ export class HeatingScheduler {
     }));
   }
 
-  private async loadEvents(from: Date, to: Date): Promise<HeatingEvent[]> {
+  private async loadEvents(
+    from: Date,
+    to: Date,
+    labels: HeatingAuditLabels,
+  ): Promise<HeatingEvent[]> {
     let events: CalendarEvent[];
 
     try {
@@ -379,6 +419,10 @@ export class HeatingScheduler {
         {},
         error,
       );
+    }
+
+    for (const event of events) {
+      labels.events.set(event.id, event.title);
     }
 
     return events
