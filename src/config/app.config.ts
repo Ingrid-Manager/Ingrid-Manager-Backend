@@ -29,8 +29,9 @@ class EnvironmentVariablesValidator {
   @IsOptional()
   APP_PORT!: number;
 
+  // Pflicht: Links in Mails (Bestätigung, Passwort-Reset) und die
+  // CORS-Freigabe hängen davon ab.
   @IsUrl({ require_tld: false })
-  @IsOptional()
   FRONTEND_DOMAIN!: string;
 
   @IsUrl({ require_tld: false })
