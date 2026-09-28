@@ -25,6 +25,7 @@ import {
   PrintRoom,
 } from './print-fullcalendar-data';
 import { AllConfigType } from '../config/config.type';
+import { getIsoWeek } from './iso-week';
 import { CalendarEventFilterDto } from '../calendar-events/application/dto/calendar-event-filter.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
@@ -294,10 +295,11 @@ export class PrintService {
         const start = this.startOfWeek(date);
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
+        const { week, year } = getIsoWeek(start);
         return {
           start,
           end,
-          rangeLabel: `KW ${this.getIsoWeekNumber(start)} · ${start.getFullYear()}`,
+          rangeLabel: `KW ${week} · ${year}`,
         };
       }
       case PrintViewType.month: {
@@ -328,15 +330,5 @@ export class PrintService {
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - day);
     return d;
-  }
-
-  private getIsoWeekNumber(date: Date): number {
-    const d = new Date(
-      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-    );
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 }
