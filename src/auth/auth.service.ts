@@ -245,11 +245,11 @@ export class AuthService {
     // "inactive" = E-Mail bestätigt, wartet auf Freischaltung durch die
     // Verwaltung; "active" = freigeschaltet.
     if (user.status?.id?.toString() === StatusEnum.pending.toString()) {
-      user.status = {
-        id: StatusEnum.inactive,
-      };
-
-      await this.usersService.update(user.id, user, user);
+      await this.usersService.update(
+        user.id,
+        { status: { id: StatusEnum.inactive } },
+        user,
+      );
     }
   }
 
@@ -336,13 +336,11 @@ export class AuthService {
       });
     }
 
-    user.password = password;
-
     await this.sessionService.deleteByUserId({
       userId: user.id,
     });
 
-    await this.usersService.update(user.id, user, user);
+    await this.usersService.update(user.id, { password }, user);
 
     const userLabel = await this.auditLogService.getUserLabel({
       id: Number(user.id),

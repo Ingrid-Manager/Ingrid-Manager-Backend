@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsAppPassword } from '../../utils/validators/is-app-password.decorator';
 import { Transform } from 'class-transformer';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
 
@@ -10,11 +11,7 @@ export class AuthRegisterLoginDto {
   email!: string;
 
   @ApiProperty()
-  @MinLength(8)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).+$/, {
-    message:
-      'Das Passwort muss Groß und Kleinbuchstaben, sowie mindestens eine Zahl oder ein Sonderzeichen beinhalten!',
-  })
+  @IsAppPassword()
   password!: string;
 
   @ApiProperty({ example: 'John' })
