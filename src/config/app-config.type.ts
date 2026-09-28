@@ -14,4 +14,8 @@ export type AppConfig = {
   pdfServiceBaseUrl?: string;
   /** Geteiltes Secret zwischen Backend und PDF-Server (beide Richtungen) */
   pdfServiceAppKey?: string;
+  /** Kategorie der importierten Ferien (HOLIDAY_CATEGORY_ID, Default 9999) */
+  holidayCategoryId?: number;
+  /** Raum der importierten Ferien (HOLIDAY_ROOM_ID, Default 9999) */
+  holidayRoomId?: number;
 };
