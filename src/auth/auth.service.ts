@@ -419,17 +419,17 @@ export class AuthService {
       }
     }
 
+    // Eine Änderung der eigenen E-Mail-Adresse ist (noch) nicht umgesetzt:
+    // statt sie still zu verwerfen und trotzdem Erfolg zu melden, wird sie
+    // abgelehnt. Bewusst ohne vorherige Existenzprüfung der neuen Adresse,
+    // damit der Endpunkt nicht verrät, ob eine Adresse bereits vergeben ist.
     if (userDto.email && userDto.email !== currentUser.email) {
-      const userByEmail = await this.usersService.findByEmail(userDto.email);
-
-      if (userByEmail && userByEmail.id !== currentUser.id) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            email: 'emailExists',
-          },
-        });
-      }
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          email: 'emailChangeNotSupported',
+        },
+      });
     }
 
     const passwordChanged = Boolean(userDto.password);
