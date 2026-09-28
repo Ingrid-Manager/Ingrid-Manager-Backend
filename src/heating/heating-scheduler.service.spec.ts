@@ -303,6 +303,24 @@ describe('HeatingScheduler', () => {
       ]);
     });
 
+    it('should cool heated rooms when the season is not configured', async () => {
+      config = { ...config, seasonStart: undefined, seasonEnd: undefined };
+      rooms[3].heated = true;
+      events = [eventAt(1, 4, 30, 60)];
+
+      const result = await scheduler.run(NOW);
+
+      expect(result.inSeason).toBeNull();
+      expect(result.errors[0].code).toBe(HeatingErrorCode.CONFIGURATION_ERROR);
+      expect(result.actions.map((a) => [a.roomId, a.action, a.reason])).toEqual(
+        [[4, 'COOL', 'SEASON_END']],
+      );
+      expect(heatedOf(4)).toBe(false);
+      expect(commands).toEqual([
+        { locationId: 2, ain: 'B-1', temperature: 16 },
+      ]);
+    });
+
     it('should not send commands when the season is not configured', async () => {
       config = { ...config, seasonStart: undefined };
       events = [eventAt(1, 1, 30, 60)];
