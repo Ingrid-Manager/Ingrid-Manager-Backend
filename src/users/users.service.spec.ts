@@ -1,3 +1,4 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { UsersService } from './users.service';
@@ -185,5 +186,21 @@ describe('UsersService', () => {
         entityId: 9,
       }),
     );
+  });
+
+  it('should reject role names instead of numeric role ids', async () => {
+    usersRepository.findById.mockResolvedValue({
+      id: 9,
+      role: { id: RoleEnum.user },
+    });
+
+    await expect(
+      service.update(
+        9,
+        { role: { id: 'admin' } } as any,
+        { id: 1, role: { id: RoleEnum.admin } } as any,
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(usersRepository.update).not.toHaveBeenCalled();
   });
 });
