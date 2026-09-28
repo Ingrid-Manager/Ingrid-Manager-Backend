@@ -16,6 +16,7 @@ import { RoleEnum } from '../roles/roles.enum';
 import { HeatingService } from './heating.service';
 import { ConnectHeatingDto } from './dto/connect-heating.dto';
 import { SetTemperatureDto } from './dto/set-temperature.dto';
+import { ParseAinPipe } from './ain.pipe';
 
 /*
  * Diagnose- und Steuerungsendpunkte für FRITZ!Box-Thermostate.
@@ -80,7 +81,7 @@ export class HeatingController {
   }
 
   @Get('devices/:ain')
-  getDevice(@Param('ain') ain: string) {
+  getDevice(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.getDevice(ain);
   }
 
@@ -90,7 +91,7 @@ export class HeatingController {
   }
 
   @Get('groups/:ain/isGroup')
-  isGroup(@Param('ain') ain: string) {
+  isGroup(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.isGroup(ain);
   }
 
@@ -120,10 +121,13 @@ export class HeatingController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Zieltemperatur wurde gesetzt',
+    description:
+      'Zieltemperatur wurde gesetzt. Diagnose-Eingriff: Der Heizzustand der ' +
+      'kalendergesteuerten Heizung wird dabei nicht verändert, der nächste ' +
+      'Zustandswechsel des Schedulers überschreibt den Wert.',
   })
   async setTemperature(
-    @Param('ain') ain: string,
+    @Param('ain', ParseAinPipe) ain: string,
     @Body() dto: SetTemperatureDto,
   ) {
     return this.heatingService.setTemperature(ain, dto.temperature);
@@ -142,7 +146,7 @@ export class HeatingController {
     status: 200,
     description: 'Aktuelle Temperatur und Zieltemperatur',
   })
-  getTemperature(@Param('ain') ain: string) {
+  getTemperature(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.getTemperature(ain);
   }
 }
