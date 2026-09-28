@@ -158,4 +158,20 @@ describe('AuthService', () => {
       }),
     );
   });
+
+  it('should reject an email change without checking whether the address exists', async () => {
+    usersService.findById.mockResolvedValue({
+      id: 5,
+      email: 'anna@example.com',
+      role: { id: RoleEnum.user },
+    });
+
+    await expect(
+      service.update(
+        { id: 5, role: { id: RoleEnum.user }, sessionId: 1 } as any,
+        { email: 'other@example.com' },
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(usersService.findByEmail).not.toHaveBeenCalled();
+  });
 });
