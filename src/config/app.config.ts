@@ -59,6 +59,10 @@ class EnvironmentVariablesValidator {
 
   @IsString()
   @IsOptional()
+  PDF_SERVICE_CALLBACK_KEY!: string;
+
+  @IsString()
+  @IsOptional()
   APP_CORS_ORIGINS!: string;
 
   @IsIn(['true', 'false'])
@@ -149,6 +153,7 @@ export default registerAs<AppConfig>('app', () => {
       process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
     pdfServiceBaseUrl: process.env.PDF_SERVICE_BASE_URL,
     pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
+    pdfServiceCallbackKey: process.env.PDF_SERVICE_CALLBACK_KEY || undefined,
     swaggerEnabled: isSwaggerEnabled(process.env),
     corsOrigins: parseCorsOrigins(
       process.env.APP_CORS_ORIGINS,

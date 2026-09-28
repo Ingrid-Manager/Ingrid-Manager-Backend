@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalendarEventsService } from '../calendar-events/calendar-events.service';
 import { RoomsService } from '../rooms/rooms.service';
@@ -53,6 +58,8 @@ const PDF_OPTIONS_BY_TYPE: Record<
 
 @Injectable()
 export class PrintService {
+  private readonly logger = new Logger(PrintService.name);
+
   constructor(
     private readonly calendarEventsService: CalendarEventsService,
     private readonly roomsService: RoomsService,
@@ -150,7 +157,6 @@ export class PrintService {
     // einmalig nutzbaren Token ablegen und den externen PDF-Render-Server
     // bitten, genau diese URL zu laden (siehe PrintHtmlController /
     // RemotePdfRendererService für die Absicherung dieses Aufrufs).
-    const token = this.htmlCache.store(html);
     const backendDomain = this.configService.getOrThrow('app.backendDomain', {
       infer: true,
     });
@@ -167,13 +173,20 @@ export class PrintService {
     // offensichtlich wäre. Deshalb hier ein früher, eindeutiger Fehler
     // statt eines mysteriösen Fehlschlags weiter unten in der Kette.
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(backendDomain)) {
-      throw new Error(
+      this.logger.error(
         `BACKEND_DOMAIN ist auf "${backendDomain}" gesetzt (bzw. nicht konfiguriert). ` +
           'Für die Druckfunktion muss dies die von außen erreichbare Adresse ' +
           'dieses Backends sein (z. B. "https://backend.ingrid-manager.de"), ' +
           'da der externe PDF-Server darüber das generierte HTML abruft.',
       );
+      throw new ServiceUnavailableException(
+        'Die Druckfunktion ist nicht vollständig konfiguriert (BACKEND_DOMAIN).',
+      );
     }
+
+    // Erst nach der Konfigurationsprüfung ablegen, damit bei einer
+    // Fehlkonfiguration kein ungenutzter Eintrag im Cache verbleibt.
+    const token = this.htmlCache.store(html);
 
     const apiPrefix = this.configService.getOrThrow('app.apiPrefix', {
       infer: true,

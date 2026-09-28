@@ -9,6 +9,12 @@ FRONTEND_DOMAIN=http://localhost:3000
 # APP_CORS_ORIGINS=https://ingrid-manager.de,https://www.ingrid-manager.de
 # Swagger unter /docs (Default: nur bei NODE_ENV=development)
 # APP_SWAGGER_ENABLED=false
+
+# Externer PDF-Render-Server (Druckfunktion). HTTP nur für lokale/private Hosts.
+PDF_SERVICE_BASE_URL=
+PDF_SERVICE_APP_KEY=
+# Optional eigenes Secret für den Rückruf des PDF-Servers (X-App-Key)
+# PDF_SERVICE_CALLBACK_KEY=
 BACKEND_DOMAIN=http://localhost:3000
 
 DATABASE_TYPE=postgres
