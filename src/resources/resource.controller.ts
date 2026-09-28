@@ -16,6 +16,7 @@ import { RolesGuard } from '../roles/roles.guard';
 import { ResourceService } from './resource.service';
 import { CreateResourceDto } from './application/dto/create-resource.dto';
 import { UpdateResourceDto } from './application/dto/update-resource.dto';
+import { GetResourceDto } from './application/dto/get-resource.dto';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller({
@@ -33,7 +34,7 @@ export class ResourceController {
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
   @Post('find')
-  findOneWithBody(@Body() body: { id: number }) {
+  findOneWithBody(@Body() body: GetResourceDto) {
     return this.service.findOne(body.id);
   }
 
@@ -47,6 +48,14 @@ export class ResourceController {
   @Get('names')
   findNames() {
     return this.service.findNames();
+  }
+
+  // Muss nach 'list' und 'names' deklariert sein, damit diese Routen nicht
+  // als :id interpretiert werden.
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findOne(id);
   }
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
