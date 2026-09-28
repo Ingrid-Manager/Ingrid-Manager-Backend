@@ -16,6 +16,7 @@ import {
   buildYearEvents,
   toSafeInlineJson,
   contrastTextColor,
+  sanitizeHexColor,
   PrintRoom,
 } from './print-fullcalendar-data';
 import { AllConfigType } from '../config/config.type';
@@ -249,12 +250,16 @@ export class PrintService {
       );
     }
 
-    return rooms.map((room) => ({
-      id: room.id,
-      title: room.title,
-      color: room.color,
-      textColor: contrastTextColor(room.color),
-    }));
+    return rooms.map((room) => {
+      const color = sanitizeHexColor(room.color);
+
+      return {
+        id: room.id,
+        title: room.title,
+        color,
+        textColor: contrastTextColor(color),
+      };
+    });
   }
 
   private toDateOnlyIso(date: Date): string {
