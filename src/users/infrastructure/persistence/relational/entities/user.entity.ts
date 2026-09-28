@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
 import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
 
@@ -27,6 +28,10 @@ export class UserEntity extends EntityRelationalHelper {
   @Column({ type: String, unique: true, nullable: true })
   email!: string | null;
 
+  // Zweite Absicherung zusätzlich zur Domain-Klasse: Wird eine UserEntity
+  // (z. B. als Relation eines Termins) direkt serialisiert, darf der
+  // Passwort-Hash nie in der Antwort landen.
+  @Exclude({ toPlainOnly: true })
   @Column({ nullable: true })
   password?: string;
 
