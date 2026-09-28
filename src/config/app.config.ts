@@ -3,6 +3,7 @@ import { AppConfig } from './app-config.type';
 import validateConfig from '.././utils/validate-config';
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -59,6 +60,26 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   APP_CORS_ORIGINS!: string;
+
+  @IsIn(['true', 'false'])
+  @IsOptional()
+  APP_SWAGGER_ENABLED!: string;
+}
+
+/**
+ * Swagger (/docs) ist nur eingeschaltet, wenn APP_SWAGGER_ENABLED=true
+ * gesetzt ist oder - ohne diese Angabe - NODE_ENV ausdrücklich
+ * "development" ist. Ein fehlendes NODE_ENV (z. B. auf dem Server)
+ * veröffentlicht die API-Dokumentation damit nicht mehr.
+ */
+export function isSwaggerEnabled(
+  env: Record<string, string | undefined>,
+): boolean {
+  if (env.APP_SWAGGER_ENABLED) {
+    return env.APP_SWAGGER_ENABLED === 'true';
+  }
+
+  return env.NODE_ENV === Environment.Development;
 }
 
 /**
@@ -128,6 +149,7 @@ export default registerAs<AppConfig>('app', () => {
       process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
     pdfServiceBaseUrl: process.env.PDF_SERVICE_BASE_URL,
     pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
+    swaggerEnabled: isSwaggerEnabled(process.env),
     corsOrigins: parseCorsOrigins(
       process.env.APP_CORS_ORIGINS,
       process.env.FRONTEND_DOMAIN,

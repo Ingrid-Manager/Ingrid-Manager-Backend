@@ -63,7 +63,7 @@ async function bootstrap() {
     })
     .build();
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (configService.get('app.swaggerEnabled', { infer: true })) {
     const document = SwaggerModule.createDocument(app, options);
     SwaggerModule.setup('docs', app, document);
   }

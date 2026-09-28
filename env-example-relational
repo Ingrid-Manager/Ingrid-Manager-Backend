@@ -7,6 +7,8 @@ APP_HEADER_LANGUAGE=x-custom-lang
 FRONTEND_DOMAIN=http://localhost:3000
 # Für CORS zugelassene Origins (kommagetrennt). Default: Origin von FRONTEND_DOMAIN
 # APP_CORS_ORIGINS=https://ingrid-manager.de,https://www.ingrid-manager.de
+# Swagger unter /docs (Default: nur bei NODE_ENV=development)
+# APP_SWAGGER_ENABLED=false
 BACKEND_DOMAIN=http://localhost:3000
 
 DATABASE_TYPE=postgres
