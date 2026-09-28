@@ -37,6 +37,12 @@ FILE_DRIVER=local
 ACCESS_KEY_ID=
 SECRET_ACCESS_KEY=
 
+# Schlüssel für gespeicherte Zugangsdaten (z. B. FRITZ!Box-Passwörter),
+# genau 32 Byte (z. B. 32 ASCII-Zeichen). Nach einer Änderung sind bestehende Werte nur lesbar,
+# wenn der bisherige Schlüssel als APP_CRYPTO_PREVIOUS_KEY gesetzt ist.
+APP_CRYPTO_KEY=
+# APP_CRYPTO_PREVIOUS_KEY=
+
 MAIL_HOST=maildev
 MAIL_PORT=1025
 MAIL_USER=
