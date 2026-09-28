@@ -172,15 +172,16 @@ export class HeatingScheduler {
           `HEATING_SEASON_START/HEATING_SEASON_END are missing or invalid ` +
             `(got "${config.seasonStart ?? ''}" / "${config.seasonEnd ?? ''}", expected MM-DD)`,
         );
-
-        return;
+      } else {
+        result.inSeason = isInSeason(now, season);
       }
-
-      result.inSeason = isInSeason(now, season);
 
       const rooms = await this.loadRooms(result.labels);
 
-      if (!result.inSeason) {
+      if (!season || !result.inSeason) {
+        // Ohne gültige Heizsaison wird nie geheizt: noch als beheizt
+        // markierte Räume werden (wie beim Saisonende) abgesenkt, damit
+        // sie nicht dauerhaft warm bleiben.
         // Einmaliges Absenken beim Verlassen der Heizsaison (idempotent über
         // den persistierten heated-Zustand).
         result.actions = planSeasonExit(rooms);
