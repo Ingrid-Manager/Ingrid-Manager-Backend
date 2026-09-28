@@ -62,8 +62,12 @@ export class UsersService {
     let email: string | null = null;
 
     if (createUserDto.email) {
+      // Inklusive soft-gelöschter User: deren Adresse belegt weiterhin den
+      // Unique-Index (Altbestand vor der Anonymisierung beim Löschen) und
+      // würde sonst beim Speichern mit HTTP 500 scheitern.
       const userObject = await this.usersRepository.findByEmail(
         createUserDto.email,
+        { withDeleted: true },
       );
       if (userObject) {
         throw new UnprocessableEntityException({
@@ -211,6 +215,7 @@ export class UsersService {
     if (updateUserDto.email) {
       const userObject = await this.usersRepository.findByEmail(
         updateUserDto.email,
+        { withDeleted: true },
       );
 
       if (userObject && userObject.id !== id) {

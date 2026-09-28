@@ -203,4 +203,26 @@ describe('UsersService', () => {
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(usersRepository.update).not.toHaveBeenCalled();
   });
+
+  it('should reject an email that still belongs to a deleted user', async () => {
+    const findByEmail = jest.fn().mockResolvedValue({
+      id: 3,
+      email: 'old@example.com',
+      deletedAt: new Date(),
+    });
+    (usersRepository as unknown as { findByEmail: jest.Mock }).findByEmail =
+      findByEmail;
+
+    await expect(
+      service.create({
+        email: 'old@example.com',
+        firstName: 'Neu',
+        lastName: 'Nutzer',
+      } as any),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(findByEmail).toHaveBeenCalledWith('old@example.com', {
+      withDeleted: true,
+    });
+    expect(usersRepository.create).not.toHaveBeenCalled();
+  });
 });
