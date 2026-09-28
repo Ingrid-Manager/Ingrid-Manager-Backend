@@ -19,8 +19,6 @@ export type AppConfig = {
    * Ohne Angabe gilt pdfServiceAppKey für beide Richtungen.
    */
   pdfServiceCallbackKey?: string;
-  /** Für CORS zugelassene Origins (APP_CORS_ORIGINS bzw. FRONTEND_DOMAIN) */
-  corsOrigins: string[];
   /** Swagger unter /docs bereitstellen (APP_SWAGGER_ENABLED) */
   swaggerEnabled: boolean;
   /** Kategorie der importierten Ferien (HOLIDAY_CATEGORY_ID, Default 9999) */

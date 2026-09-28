@@ -14,14 +14,12 @@ import { AuditErrorFilter } from './audit-log/filters/audit-error.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.getHttpAdapter().getInstance().trustProxy = true;
-  const configService = app.get(ConfigService<AllConfigType>);
-  // Nur explizit zugelassene Origins (Frontend) dürfen die API mit
-  // Credentials aus dem Browser aufrufen - statt jede Origin zu spiegeln.
   app.enableCors({
-    origin: configService.getOrThrow('app.corsOrigins', { infer: true }),
+    origin: true,
     credentials: true,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
+  const configService = app.get(ConfigService<AllConfigType>);
 
   app.enableShutdownHooks();
   app.setGlobalPrefix(

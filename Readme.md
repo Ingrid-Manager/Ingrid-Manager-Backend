@@ -146,7 +146,6 @@ Weitere, optionale Variablen:
 
 | Variable | Bedeutung |
 |----------|-----------|
-| `APP_CORS_ORIGINS` | Für CORS zugelassene Origins (kommagetrennt), Default: Origin von `FRONTEND_DOMAIN` |
 | `APP_SWAGGER_ENABLED` | Swagger unter `/docs` (Default: nur bei `NODE_ENV=development`) |
 | `APP_LOGOURL`, `APP_ICONURL` | Logo und Icon in Mails und Ausdrucken |
 | `APP_CRYPTO_PREVIOUS_KEY` | Bisheriger Schlüssel während einer Schlüsselrotation |

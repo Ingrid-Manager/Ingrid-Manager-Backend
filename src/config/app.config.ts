@@ -29,8 +29,7 @@ class EnvironmentVariablesValidator {
   @IsOptional()
   APP_PORT!: number;
 
-  // Pflicht: Links in Mails (Bestätigung, Passwort-Reset) und die
-  // CORS-Freigabe hängen davon ab.
+  // Pflicht: Links in Mails (Bestätigung, Passwort-Reset) hängen davon ab.
   @IsUrl({ require_tld: false })
   FRONTEND_DOMAIN!: string;
 
@@ -62,10 +61,6 @@ class EnvironmentVariablesValidator {
   @IsOptional()
   PDF_SERVICE_CALLBACK_KEY!: string;
 
-  @IsString()
-  @IsOptional()
-  APP_CORS_ORIGINS!: string;
-
   @IsIn(['true', 'false'])
   @IsOptional()
   APP_SWAGGER_ENABLED!: string;
@@ -95,50 +90,6 @@ export function isSwaggerEnabled(
   }
 
   return env.NODE_ENV === Environment.Development;
-}
-
-/**
- * Ermittelt die für CORS zugelassenen Origins.
- *
- * APP_CORS_ORIGINS (kommagetrennt) hat Vorrang; ohne diese Angabe ist nur
- * die Origin von FRONTEND_DOMAIN zugelassen. Pfade oder ein abschließender
- * Schrägstrich werden entfernt, da der Browser nur die Origin
- * (Schema, Host, Port) mitschickt.
- */
-export function parseCorsOrigins(
-  corsOrigins: string | undefined,
-  frontendDomain: string | undefined,
-): string[] {
-  const configured = (corsOrigins ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const candidates = configured.length
-    ? configured
-    : frontendDomain
-      ? [frontendDomain]
-      : [];
-
-  return [
-    ...new Set(
-      candidates.flatMap((value) => {
-        // Ohne Schema (z. B. "ingrid-manager.de") sind beide Varianten erlaubt.
-        const urls = /^[a-z][a-z\d+.-]*:\/\//i.test(value)
-          ? [value]
-          : [`https://${value}`, `http://${value}`];
-
-        return urls.map((url) => {
-          try {
-            return new URL(url).origin;
-          } catch {
-            throw new Error(
-              `Ungültige Origin "${value}" in APP_CORS_ORIGINS/FRONTEND_DOMAIN`,
-            );
-          }
-        });
-      }),
-    ),
-  ];
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -172,9 +123,5 @@ export default registerAs<AppConfig>('app', () => {
     holidayRoomId: process.env.HOLIDAY_ROOM_ID
       ? parseInt(process.env.HOLIDAY_ROOM_ID, 10)
       : undefined,
-    corsOrigins: parseCorsOrigins(
-      process.env.APP_CORS_ORIGINS,
-      process.env.FRONTEND_DOMAIN,
-    ),
   };
 });
