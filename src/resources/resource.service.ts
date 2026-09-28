@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Resource } from './infrastructure/relational/persistence/entities/resource.entity';
 import { Repository } from 'typeorm';
 import { CreateResourceDto } from './application/dto/create-resource.dto';
-import { NotFoundError } from 'rxjs';
 import { ResourceMapper } from './application/mapper/resource.mapper';
 import { UpdateResourceDto } from './application/dto/update-resource.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -43,7 +42,7 @@ export class ResourceService {
     });
 
     if (!resource) {
-      throw new NotFoundError(`Resource mit id ${id} nicht gefunden`);
+      throw new NotFoundException(`Resource mit id ${id} nicht gefunden`);
     }
 
     return resource;
@@ -91,7 +90,10 @@ export class ResourceService {
       entityType: AuditEntityType.RESOURCE,
       entityId: saved.id,
       summary: `${userLabel} hat Resource "${saved.title}" bearbeitet`,
-      changes: this.auditLogService.diff(before, dto as Record<string, unknown>),
+      changes: this.auditLogService.diff(
+        before,
+        dto as Record<string, unknown>,
+      ),
     });
 
     return saved;
