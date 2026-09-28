@@ -385,8 +385,13 @@
         new Date(startDate.getFullYear(), 0, 1).getDay() + 1) / 7
     );
 
+    // Organisationsname als sicher eingebettetes JSON statt als
+    // HTML-escapter Wert in einem Template-Literal: HTML-Escaping schützt im
+    // JS-Kontext nicht vor Platzhaltern oder Backslashes (gleiches Vorgehen
+    // wie in print-year.hbs).
+    const ORG_NAME = {{{orgNameJson}}};
     document.getElementById('pageTitle').textContent =
-      `{{orgName}} – KW ${kw} · ${startDate.getFullYear()}`;
+      ORG_NAME + ' – KW ' + kw + ' · ' + startDate.getFullYear();
   });
   </script>
 </body>
