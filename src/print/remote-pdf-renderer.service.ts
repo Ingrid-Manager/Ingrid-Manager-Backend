@@ -1,6 +1,12 @@
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AllConfigType } from '../config/config.type';
+import { isSecureOrLocalUrl } from '../utils/local-host';
 
 export interface RemotePdfRenderOptions {
   landscape?: boolean;
@@ -50,13 +56,27 @@ export class RemotePdfRendererService {
     });
 
     if (!baseUrl || !appKey) {
-      throw new Error(
+      this.logger.error(
         'PDF_SERVICE_BASE_URL / PDF_SERVICE_APP_KEY sind nicht konfiguriert — ' +
           'die Druckfunktion benötigt den externen PDF-Render-Server (siehe .env).',
       );
+      throw new ServiceUnavailableException(
+        'Die Druckfunktion ist nicht konfiguriert.',
+      );
     }
 
-    const renderEndpoint = new URL('/render', baseUrl).toString();
+    // Der App-Key geht als Bearer-Token mit: unverschlüsselt nur zu lokalen
+    // bzw. privaten Hosts, sonst ausschließlich per HTTPS.
+    if (!isSecureOrLocalUrl(new URL(baseUrl))) {
+      this.logger.error(
+        `PDF_SERVICE_BASE_URL "${baseUrl}" muss HTTPS verwenden (HTTP ist nur für lokale/private Hosts erlaubt).`,
+      );
+      throw new ServiceUnavailableException(
+        'Die Druckfunktion ist nicht sicher konfiguriert.',
+      );
+    }
+
+    const renderEndpoint = this.endpoint(baseUrl, 'render');
 
     let response: globalThis.Response;
 
@@ -80,7 +100,10 @@ export class RemotePdfRendererService {
         signal: AbortSignal.timeout(60_000),
       });
     } catch (err) {
-      this.logger.error('Externer PDF-Server nicht erreichbar', err as Error);
+      this.logger.error(
+        'Externer PDF-Server nicht erreichbar',
+        (err as Error)?.stack,
+      );
       throw new BadGatewayException(
         'Der PDF-Render-Server ist aktuell nicht erreichbar.',
       );
@@ -102,7 +125,7 @@ export class RemotePdfRendererService {
     } catch (err) {
       this.logger.error(
         'Antwort des PDF-Servers ist kein gültiges JSON',
-        err as Error,
+        (err as Error)?.stack,
       );
       throw new BadGatewayException(
         'Der PDF-Render-Server hat eine ungültige Antwort geliefert.',
@@ -123,6 +146,16 @@ export class RemotePdfRendererService {
       );
     }
 
-    return new URL(`/pdf/${token}`, baseUrl).toString();
+    return this.endpoint(baseUrl, `pdf/${encodeURIComponent(token)}`);
+  }
+
+  /*
+   * Hängt `path` an die Basis-URL an, ohne einen dort enthaltenen Pfad zu
+   * verwerfen ("https://host/pdf" + "render" -> "https://host/pdf/render").
+   */
+  private endpoint(baseUrl: string, path: string): string {
+    const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+    return new URL(path, base).toString();
   }
 }
