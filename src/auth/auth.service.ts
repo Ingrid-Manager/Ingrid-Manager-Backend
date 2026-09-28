@@ -2,6 +2,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
@@ -37,6 +38,8 @@ import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private usersService: UsersService,
@@ -197,13 +200,34 @@ export class AuthService {
       },
     );
 
-    await this.mailService.userSignUp({
-      to: dto.email,
-      data: {
-        hash,
-      },
-      userName: user.firstName,
-    });
+    // Der Account ist zu diesem Zeitpunkt bereits angelegt. Ein Fehler beim
+    // Mailversand darf die Registrierung daher nicht mit HTTP 500 abbrechen
+    // (eine erneute Registrierung schlüge an der vergebenen Adresse fehl);
+    // er wird protokolliert, die Verwaltung kann den Account freischalten.
+    try {
+      await this.mailService.userSignUp({
+        to: dto.email,
+        data: {
+          hash,
+        },
+        userName: user.firstName,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      this.logger.error(
+        `Bestätigungsmail für Nutzer #${user.id} konnte nicht gesendet werden: ${message}`,
+      );
+      await this.auditLogService.log({
+        user: { id: Number(user.id) },
+        userLabel,
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.AUTH,
+        entityType: AuditEntityType.AUTH,
+        entityId: user.id,
+        summary: `Bestätigungsmail für ${userLabel} konnte nicht gesendet werden`,
+      });
+    }
   }
 
   async confirmEmail(hash: string): Promise<void> {

@@ -23,6 +23,7 @@ describe('AuthService', () => {
     create: jest.Mock;
     findById: jest.Mock;
   };
+  let mailService: { userSignUp: jest.Mock; forgotPassword: jest.Mock };
   let auditLogService: {
     log: jest.Mock;
     getUserLabel: jest.Mock;
@@ -30,6 +31,10 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+    mailService = {
+      userSignUp: jest.fn().mockResolvedValue(undefined),
+      forgotPassword: jest.fn().mockResolvedValue(undefined),
+    };
     usersService = {
       findByEmail: jest.fn(),
       create: jest.fn(),
@@ -49,13 +54,7 @@ describe('AuthService', () => {
           provide: SessionService,
           useValue: { create: jest.fn().mockResolvedValue({ id: 1 }) },
         },
-        {
-          provide: MailService,
-          useValue: {
-            userSignUp: jest.fn().mockResolvedValue(undefined),
-            forgotPassword: jest.fn().mockResolvedValue(undefined),
-          },
-        },
+        { provide: MailService, useValue: mailService },
         {
           provide: JwtService,
           useValue: { signAsync: jest.fn().mockResolvedValue('signed-token') },
@@ -155,6 +154,32 @@ describe('AuthService', () => {
         service: AuditService.AUTH,
         entityType: AuditEntityType.AUTH,
         entityId: 5,
+      }),
+    );
+  });
+
+  it('should not fail the registration when the confirmation mail cannot be sent', async () => {
+    usersService.create.mockResolvedValue({
+      id: 6,
+      email: 'mail-down@example.com',
+      firstName: 'Mail',
+      lastName: 'Down',
+    });
+    mailService.userSignUp.mockRejectedValue(new Error('SMTP down'));
+
+    await expect(
+      service.register({
+        email: 'mail-down@example.com',
+        password: 'Super-secret-pw1',
+        firstName: 'Mail',
+        lastName: 'Down',
+      }),
+    ).resolves.toBeUndefined();
+    expect(auditLogService.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.AUTH,
+        entityId: 6,
       }),
     );
   });
