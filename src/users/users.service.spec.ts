@@ -1,4 +1,7 @@
-import { UnprocessableEntityException } from '@nestjs/common';
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { UsersService } from './users.service';
@@ -224,5 +227,22 @@ describe('UsersService', () => {
       withDeleted: true,
     });
     expect(usersRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('should answer with 404 when updating or deleting an unknown user', async () => {
+    usersRepository.findById.mockResolvedValue(null);
+
+    await expect(
+      service.update(
+        404,
+        { firstName: 'X' } as any,
+        { id: 1, role: { id: RoleEnum.admin } } as any,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove(404, { id: 1 })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(usersRepository.update).not.toHaveBeenCalled();
+    expect(usersRepository.remove).not.toHaveBeenCalled();
   });
 });

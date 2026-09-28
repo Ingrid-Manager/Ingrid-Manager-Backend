@@ -3,6 +3,7 @@ import {
   Injectable,
   UnprocessableEntityException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
@@ -200,6 +201,10 @@ export class UsersService {
     // <updating-property />
 
     const beforeUser = await this.usersRepository.findById(id);
+
+    if (!beforeUser) {
+      throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
+    }
 
     let password: string | undefined = undefined;
 
@@ -407,15 +412,17 @@ export class UsersService {
   ): Promise<void> {
     const target = await this.usersRepository.findById(id);
 
+    if (!target) {
+      throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
+    }
+
     await this.usersRepository.remove(id);
 
     if (actingUser) {
       const actingLabel = await this.auditLogService.getUserLabel({
         id: actingUser.id,
       });
-      const targetLabel = target
-        ? userDisplayLabel({ ...target, id })
-        : `User #${id}`;
+      const targetLabel = userDisplayLabel({ ...target, id });
 
       await this.auditLogService.log({
         user: { id: actingUser.id },

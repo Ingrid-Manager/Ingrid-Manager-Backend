@@ -71,11 +71,11 @@ export class RoomsController {
   @Delete(':id')
   @ApiParam({
     name: 'id',
-    type: String,
+    type: Number,
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: Room['id'], @Req() req): Promise<void> {
+  remove(@Param('id', ParseIntPipe) id: Room['id'], @Req() req): Promise<void> {
     return this.service.remove(id, req.user);
   }
 }
