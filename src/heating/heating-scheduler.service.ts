@@ -74,6 +74,16 @@ export class HeatingScheduler implements OnModuleDestroy {
   private stopping = false;
   private readonly reportedConfigErrors = new Set<string>();
 
+  /*
+   * Log-Meldungen des vorherigen bzw. aktuellen Laufs. Ein Fehler, der in
+   * jedem Lauf erneut auftritt (z. B. eine dauerhaft nicht erreichbare
+   * FRITZ!Box), wird nur beim ersten Auftreten als error/warn geloggt und
+   * danach als debug - statt ca. 1440-mal am Tag. Das Aktivitätsprotokoll
+   * unterdrückt Duplikate bereits selbst (HeatingAuditService).
+   */
+  private previousRunMessages = new Set<string>();
+  private currentRunMessages = new Set<string>();
+
   constructor(
     private readonly configService: ConfigService<AllConfigType>,
     private readonly roomsService: RoomsService,
@@ -160,7 +170,11 @@ export class HeatingScheduler implements OnModuleDestroy {
       labels: { rooms: new Map(), locations: new Map(), events: new Map() },
     };
 
+    this.currentRunMessages = new Set();
+
     await this.execute(now, result);
+
+    this.logResolvedErrors();
 
     // 9. Zustandswechsel und Fehler ins Aktivitätsprotokoll schreiben
     try {
@@ -487,14 +501,28 @@ export class HeatingScheduler implements OnModuleDestroy {
     this.recordError(result, error, alreadyReported ? 'debug' : 'error');
   }
 
+  private logResolvedErrors() {
+    for (const message of this.previousRunMessages) {
+      if (!this.currentRunMessages.has(message)) {
+        this.logger.log(`Resolved: ${message}`);
+      }
+    }
+
+    this.previousRunMessages = this.currentRunMessages;
+  }
+
   private recordError(
     result: HeatingRunResult,
     error: HeatingError,
-    level: 'error' | 'warn' | 'debug' = 'error',
+    requestedLevel: 'error' | 'warn' | 'debug' = 'error',
   ) {
     result.errors.push(error);
 
     const message = error.toLogMessage();
+    const alreadyLogged = this.previousRunMessages.has(message);
+    const level = alreadyLogged ? 'debug' : requestedLevel;
+
+    this.currentRunMessages.add(message);
 
     if (level === 'error') {
       this.logger.error(message);
