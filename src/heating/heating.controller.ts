@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+  VERSION_NEUTRAL,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import {
@@ -23,12 +31,16 @@ import { SetTemperatureDto } from './dto/set-temperature.dto';
  * Nur für Administration/Verwaltung: die Endpunkte setzen Temperaturen und
  * lassen das Backend über POST /heating/connect Verbindungen zu beliebigen
  * URLs aufbauen (sonst SSRF-Vektor für nicht angemeldete Aufrufer).
+ *
+ * Wie alle anderen Controller unter /api/v1/heating erreichbar. Die frühere,
+ * unversionierte Route /api/heating bleibt übergangsweise (VERSION_NEUTRAL)
+ * erhalten, damit bestehende Aufrufer nicht brechen.
  */
 @ApiTags('Heating')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles(RoleEnum.admin, RoleEnum.verwaltung)
-@Controller('heating')
+@Controller({ path: 'heating', version: ['1', VERSION_NEUTRAL] })
 export class HeatingController {
   constructor(private readonly heatingService: HeatingService) {}
 
