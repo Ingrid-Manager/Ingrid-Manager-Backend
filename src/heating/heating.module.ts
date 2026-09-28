@@ -8,6 +8,7 @@ import { RoomsModule } from '../rooms/rooms.module';
 import { HeatingController } from './heating.controller';
 import { HeatingService } from './heating.service';
 import { HeatingAuditService } from './heating-audit.service';
+import { HeatingFileLogService } from './heating-file-log.service';
 import {
   FRITZBOX_MANAGER,
   FritzBoxConnectionManager,
@@ -24,6 +25,7 @@ import {
   providers: [
     HeatingService,
     HeatingAuditService,
+    HeatingFileLogService,
     FritzBoxConnectionManager,
     HeatingScheduler,
     {

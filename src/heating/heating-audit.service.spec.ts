@@ -11,6 +11,10 @@ import {
 } from './heating-audit.service';
 import { HeatingAction, HeatingActionResult } from './domain/heating-action';
 import { HeatingError, HeatingErrorCode } from './domain/heating-error';
+import {
+  HeatingFileLogEntry,
+  HeatingFileLogService,
+} from './heating-file-log.service';
 
 const labels = (): HeatingAuditLabels => ({
   rooms: new Map([
@@ -49,15 +53,24 @@ const thermostatError = (roomId = 1) =>
 
 describe('HeatingAuditService', () => {
   let entries: AuditLogParams[];
+  let fileEntries: HeatingFileLogEntry[];
   let service: HeatingAuditService;
 
   const record = (
     results: HeatingActionResult[],
     errors: HeatingError[] = [],
-  ) => service.record({ results, errors, labels: labels() });
+    now?: Date,
+  ) => service.record({ now, results, errors, labels: labels() });
 
   beforeEach(() => {
     entries = [];
+    fileEntries = [];
+    const fileLog = {
+      write: jest.fn((entry: HeatingFileLogEntry) => {
+        fileEntries.push(entry);
+        return Promise.resolve();
+      }),
+    };
     const auditLogService = {
       log: jest.fn((params: AuditLogParams) => {
         entries.push(params);
@@ -66,6 +79,7 @@ describe('HeatingAuditService', () => {
     };
     service = new HeatingAuditService(
       auditLogService as unknown as AuditLogService,
+      fileLog as unknown as HeatingFileLogService,
     );
   });
 
@@ -266,5 +280,144 @@ describe('HeatingAuditService', () => {
     );
 
     expect(String(entries[0].changes.detail.new).length).toBe(300);
+  });
+
+  describe('log file', () => {
+    const at = (minute: number) =>
+      new Date(`2026-09-28T08:${String(minute).padStart(2, '0')}:00.000Z`);
+
+    it('should write every audit error with full details', async () => {
+      const error = new HeatingError(
+        HeatingErrorCode.THERMOSTAT_UNREACHABLE,
+        'Thermostat AIN-1 is not reachable',
+        { locationId: 10, roomId: 1, avmId: 'AIN-1' },
+        new Error('socket hang up'),
+      );
+
+      await record(
+        [
+          { action: action(), status: 'failed', error },
+          {
+            action: action({ roomId: 2, reason: 'HALLWAY_OCCUPIED' }),
+            status: 'applied',
+          },
+        ],
+        [error],
+        at(57),
+      );
+
+      const errorEntries = fileEntries.filter(
+        (entry) => entry.event === 'HEATING_ERROR',
+      );
+      expect(errorEntries).toHaveLength(1);
+      expect(errorEntries[0]).toMatchObject({
+        event: 'HEATING_ERROR',
+        summary: entries.find(
+          (entry) => entry.action === AuditAction.HEATING_ERROR,
+        ).summary,
+        code: HeatingErrorCode.THERMOSTAT_UNREACHABLE,
+        message: 'Thermostat AIN-1 is not reachable',
+        location: { id: 10, title: 'Gemeindehaus' },
+        room: { id: 1, title: 'Saal' },
+        avmId: 'AIN-1',
+        error: {
+          name: 'HeatingError',
+          message: 'Thermostat AIN-1 is not reachable',
+          originalError: { name: 'Error', message: 'socket hang up' },
+        },
+        affectedActions: [
+          {
+            action: 'HEAT',
+            reason: 'EVENT_PRELIM',
+            room: { id: 1, title: 'Saal' },
+            targetTemperature: 21,
+            event: { id: 7, title: 'Chorprobe' },
+          },
+        ],
+        run: {
+          at: at(57).toISOString(),
+          actions: [
+            { room: { id: 1 }, status: 'failed', error: error.message },
+            { room: { id: 2 }, status: 'applied', error: null },
+          ],
+        },
+      });
+      expect((errorEntries[0].error as { stack: string }).stack).toContain(
+        'HeatingError',
+      );
+    });
+
+    it('should not truncate the technical details', async () => {
+      await record(
+        [],
+        [
+          new HeatingError(
+            HeatingErrorCode.DATA_SOURCE_ERROR,
+            'Calendar events could not be loaded',
+            {},
+            new Error('x'.repeat(1000)),
+          ),
+        ],
+      );
+
+      expect(
+        (fileEntries[0].error as { originalError: { message: string } })
+          .originalError.message,
+      ).toHaveLength(1000);
+    });
+
+    it('should write a recovery with duration and failed runs', async () => {
+      await record([], [thermostatError(1)], at(31));
+      await record([], [thermostatError(1)], at(32));
+      await record([], [thermostatError(1)], at(33));
+      await record(
+        [{ action: action({ action: 'COOL' }), status: 'applied' }],
+        [],
+        at(38),
+      );
+
+      expect(fileEntries.map((entry) => entry.event)).toEqual([
+        'HEATING_ERROR',
+        'HEATING_RECOVERED',
+      ]);
+      expect(fileEntries[1]).toMatchObject({
+        summary: 'Heizbefehle für Raum "Saal" werden wieder ausgeführt',
+        code: HeatingErrorCode.THERMOSTAT_UNREACHABLE,
+        room: { id: 1, title: 'Saal' },
+        firstSeenAt: at(31).toISOString(),
+        lastSeenAt: at(33).toISOString(),
+        avmId: 'AIN-1',
+        durationMinutes: 7,
+        failedRuns: 3,
+        recoveredBy: [{ action: 'COOL', room: { id: 1 } }],
+      });
+    });
+
+    it('should write when an error disappears without a successful command', async () => {
+      await record([], [thermostatError(1)], at(12));
+      await record([], [thermostatError(1)], at(13));
+      await record([], [], at(14));
+
+      expect(entries.map((entry) => entry.action)).toEqual([
+        AuditAction.HEATING_ERROR,
+      ]);
+      expect(fileEntries.map((entry) => entry.event)).toEqual([
+        'HEATING_ERROR',
+        'HEATING_ERROR_CLEARED',
+      ]);
+      expect(fileEntries[1]).toMatchObject({
+        summary:
+          'Fehler THERMOSTAT_UNREACHABLE für Raum "Saal" tritt nicht mehr auf, ' +
+          'ohne dass ein Heizbefehl erfolgreich war (Aktion nicht mehr erforderlich)',
+        failedRuns: 2,
+        durationMinutes: 2,
+      });
+    });
+
+    it('should not write successful state changes', async () => {
+      await record([{ action: action(), status: 'applied' }]);
+
+      expect(fileEntries).toEqual([]);
+    });
   });
 });

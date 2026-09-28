@@ -80,3 +80,8 @@ HEATING_SEASON_END=04-30
 HEATING_HALLWAY_ROOM_ID=
 # Minütliche Heizungssteuerung aktivieren (Default: true)
 HEATING_SCHEDULER_ENABLED=true
+# Ausführliches Fehlerprotokoll der Heizung (HEATING_ERROR/HEATING_RECOVERED)
+# als JSON-Zeilen; Default logs/heating.log, "false" schaltet es ab
+# HEATING_LOG_FILE=logs/heating.log
+# Größe in MB, ab der die Datei nach <datei>.1 rotiert wird (Default 10)
+# HEATING_LOG_FILE_MAX_SIZE_MB=10

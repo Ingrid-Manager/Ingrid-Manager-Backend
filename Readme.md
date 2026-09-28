@@ -157,6 +157,8 @@ Weitere, optionale Variablen:
 | `HEATING_SEASON_START`, `HEATING_SEASON_END` | Heizsaison im Format `MM-DD` (beide oder keiner) |
 | `HEATING_HALLWAY_ROOM_ID` | Raum-ID(s) der Flure, kommagetrennt, höchstens einer je Location |
 | `HEATING_SCHEDULER_ENABLED` | Minütliche Heizungssteuerung (Default `true`) |
+| `HEATING_LOG_FILE` | Datei für das ausführliche Fehlerprotokoll der Heizung (Default `logs/heating.log`, `false` schaltet es ab) |
+| `HEATING_LOG_FILE_MAX_SIZE_MB` | Dateigröße, ab der nach `<datei>.1` rotiert wird (Default `10`) |
 | `DATABASE_URL`, `DATABASE_MAX_CONNECTIONS`, `DATABASE_SSL_ENABLED`, `DATABASE_REJECT_UNAUTHORIZED`, `DATABASE_CA`, `DATABASE_KEY`, `DATABASE_CERT` | Erweiterte Datenbankeinstellungen |
 
 ### 5. Migrationen und Stammdaten
