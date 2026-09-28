@@ -197,4 +197,20 @@ describe('FritzBoxConnectionManager', () => {
     expect(second).not.toBe(first);
     expect(manager.add).toHaveBeenCalledTimes(2);
   });
+
+  it('should disconnect all FRITZ!Boxes before the application shuts down', async () => {
+    await connectionManager.getConnection(1);
+
+    await connectionManager.beforeApplicationShutdown();
+
+    expect(manager.disconnectAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not fail the shutdown when disconnecting fails', async () => {
+    manager.disconnectAll.mockRejectedValueOnce(new Error('unreachable'));
+
+    await expect(
+      connectionManager.beforeApplicationShutdown(),
+    ).resolves.toBeUndefined();
+  });
 });
