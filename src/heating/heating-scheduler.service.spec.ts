@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AllConfigType } from '../config/config.type';
@@ -787,6 +788,41 @@ describe('HeatingScheduler', () => {
       expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(2);
       expect(maxActive).toBe(1);
       expect(scheduler.isRunning()).toBe(false);
+    });
+  });
+
+  describe('logging', () => {
+    it('should log a persisting error only once and report its resolution', async () => {
+      const errorLog = jest.spyOn(Logger.prototype, 'error');
+      const infoLog = jest.spyOn(Logger.prototype, 'log');
+      rooms[3].heated = true;
+      clockNow = new Date(2026, 5, 15, 20, 0, 0); // außerhalb der Saison
+      unreachable.add(2);
+
+      const unreachableLogs = () =>
+        errorLog.mock.calls.filter((call) =>
+          String(call[0]).includes('FRITZBOX_UNREACHABLE'),
+        ).length;
+
+      try {
+        await scheduler.run(clockNow);
+        await scheduler.run(new Date(clockNow.getTime() + MINUTE));
+        await scheduler.run(new Date(clockNow.getTime() + 2 * MINUTE));
+
+        expect(unreachableLogs()).toBe(1);
+
+        unreachable.delete(2);
+        await scheduler.run(new Date(clockNow.getTime() + 3 * MINUTE));
+
+        expect(
+          infoLog.mock.calls.some((call) =>
+            String(call[0]).startsWith('Resolved: [FRITZBOX_UNREACHABLE]'),
+          ),
+        ).toBe(true);
+      } finally {
+        errorLog.mockRestore();
+        infoLog.mockRestore();
+      }
     });
   });
 });
