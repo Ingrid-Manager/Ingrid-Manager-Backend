@@ -40,4 +40,7 @@ export abstract class UserRepository {
   ): Promise<User | null>;
 
   abstract remove(id: User['id']): Promise<void>;
+
+  /* Anzahl aktiver Admins, optional ohne den User `excludeId`. */
+  abstract countActiveAdmins(excludeId?: User['id']): Promise<number>;
 }
