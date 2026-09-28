@@ -48,7 +48,9 @@ describe('HolidayReorganizationService', () => {
         },
         {
           provide: getRepositoryToken(Room),
-          useValue: { findOne: jest.fn().mockResolvedValue({ id: 9999 }) },
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: 9999, createdbyid: 5 }),
+          },
         },
         {
           provide: ConfigService,
@@ -65,8 +67,24 @@ describe('HolidayReorganizationService', () => {
 
   it('logs HOLIDAYS_IMPORTED with the correct count on a system-triggered run', async () => {
     (axios.get as jest.Mock)
-      .mockResolvedValueOnce({ data: [{ name: [{ language: 'DE', text: 'Weihnachten' }], startDate: '2026-12-25', endDate: '2026-12-26' }] })
-      .mockResolvedValueOnce({ data: [{ name: [{ language: 'DE', text: 'Sommerferien' }], startDate: '2026-07-01', endDate: '2026-08-01' }] });
+      .mockResolvedValueOnce({
+        data: [
+          {
+            name: [{ language: 'DE', text: 'Weihnachten' }],
+            startDate: '2026-12-25',
+            endDate: '2026-12-26',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            name: [{ language: 'DE', text: 'Sommerferien' }],
+            startDate: '2026-07-01',
+            endDate: '2026-08-01',
+          },
+        ],
+      });
 
     await service.run();
 
@@ -101,6 +119,55 @@ describe('HolidayReorganizationService', () => {
       expect.objectContaining({
         action: AuditAction.SYSTEM_ERROR,
         service: AuditService.REORGANIZATION,
+      }),
+    );
+  });
+
+  it('should store holidays with an exclusive end owned by the holiday room creator', async () => {
+    (axios.get as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            name: [{ language: 'DE', text: 'Herbstferien' }],
+            startDate: '2026-10-12',
+            endDate: '2026-10-23',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    await service.run();
+
+    expect(calendarEventRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Herbstferien',
+        start: new Date('2026-10-12'),
+        end: new Date('2026-10-24'),
+        allDay: true,
+        createdbyid: 5,
+      }),
+    );
+  });
+
+  it('should make the acting admin the owner of manually imported holidays', async () => {
+    (axios.get as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            name: [{ language: 'DE', text: 'Neujahr' }],
+            startDate: '2027-01-01',
+            endDate: '2027-01-01',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    await service.run({ id: 42 });
+
+    expect(calendarEventRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        end: new Date('2027-01-02'),
+        createdbyid: 42,
       }),
     );
   });

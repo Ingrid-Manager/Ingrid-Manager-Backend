@@ -11,6 +11,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditAction } from '../../audit-log/audit-action.enum';
 import { AuditEntityType } from '../../audit-log/audit-entity-type.enum';
 import { AuditService } from '../../audit-log/audit-service.enum';
+import { resolveHolidayIds } from '../../config/holiday-ids';
 
 export interface ReorganizationActingUser {
   id: number;
@@ -22,9 +23,6 @@ export interface ReorganizationActingUser {
 @Injectable()
 export class HolidayReorganizationService {
   private readonly logger = new Logger(HolidayReorganizationService.name);
-
-  // Feste Kategorie-ID für importierte Feiertage/Ferien (siehe importOpenHolidays unten).
-  private static readonly HOLIDAY_CATEGORY_ID = 9999;
 
   constructor(
     @InjectRepository(CalendarEvent)
@@ -60,7 +58,7 @@ export class HolidayReorganizationService {
   /** Alle aktuell importierten Feiertage/Ferien, für die Admin-Übersicht. */
   async list() {
     const holidays = await this.calendarEventRepository.find({
-      where: { categoryid: HolidayReorganizationService.HOLIDAY_CATEGORY_ID },
+      where: { categoryid: resolveHolidayIds(this.configService).categoryId },
       order: { start: 'ASC' },
     });
 
@@ -78,26 +76,35 @@ export class HolidayReorganizationService {
     const subdivision = this.configService.get<string>('ORG_BUNDESLAND', {
       infer: true,
     });
+    const holidayIds = resolveHolidayIds(this.configService);
 
     const holidayCategory = await this.categoryRepository.findOne({
       where: {
-        id: HolidayReorganizationService.HOLIDAY_CATEGORY_ID,
+        id: holidayIds.categoryId,
       },
     });
 
     if (!holidayCategory) {
-      throw new Error('Kategorie "Ferien" nicht gefunden');
+      throw new Error(
+        `Kategorie "Ferien" (ID ${holidayIds.categoryId}, HOLIDAY_CATEGORY_ID) nicht gefunden`,
+      );
     }
 
     const holidayRoom = await this.roomRepository.findOne({
       where: {
-        id: 9999,
+        id: holidayIds.roomId,
       },
     });
 
     if (!holidayRoom) {
-      throw new Error('Raum "Ferien Dummy" nicht gefunden');
+      throw new Error(
+        `Raum "Ferien Dummy" (ID ${holidayIds.roomId}, HOLIDAY_ROOM_ID) nicht gefunden`,
+      );
     }
+
+    // Besitzer der Ferientermine: der auslösende Admin bzw. beim Cron-Lauf
+    // der Ersteller des Ferienraums (statt eines fest angenommenen Users 1).
+    const ownerId = user?.id ?? holidayRoom.createdbyid;
 
     const today = new Date();
 
@@ -146,17 +153,23 @@ export class HolidayReorganizationService {
         holiday.name?.[0]?.text ??
         'Feiertag';
 
+      // OpenHolidays liefert das Enddatum inklusiv. Gespeichert wird - wie
+      // bei ganztägigen Terminen in FullCalendar - exklusiv der Folgetag,
+      // sonst fehlt der letzte Ferientag in der Kalenderanzeige.
+      const end = new Date(holiday.endDate);
+      end.setUTCDate(end.getUTCDate() + 1);
+
       await this.calendarEventRepository.save(
         this.calendarEventRepository.create({
           title,
           description: '',
           start: new Date(holiday.startDate),
-          end: new Date(holiday.endDate),
+          end,
           allDay: true,
           isBackground: true,
           categoryid: holidayCategory.id,
           roomid: holidayRoom.id,
-          createdbyid: 1,
+          createdbyid: ownerId,
         }),
       );
     }

@@ -67,6 +67,11 @@ APPLE_APP_AUDIENCE=[]
 
 WORKER_HOST=redis://redis:6379/1
 
+# Ferienimport: Kategorie- und Raum-ID der importierten Feiertage/Ferien
+# (Default 9999)
+# HOLIDAY_CATEGORY_ID=9999
+# HOLIDAY_ROOM_ID=9999
+
 # Kalendergesteuerte Raumheizung
 # Heizsaison (jahresunabhängig, Format MM-DD, Grenzen inklusive)
 HEATING_SEASON_START=10-01

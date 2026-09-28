@@ -68,6 +68,16 @@ class EnvironmentVariablesValidator {
   @IsIn(['true', 'false'])
   @IsOptional()
   APP_SWAGGER_ENABLED!: string;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  HOLIDAY_CATEGORY_ID!: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  HOLIDAY_ROOM_ID!: number;
 }
 
 /**
@@ -155,6 +165,12 @@ export default registerAs<AppConfig>('app', () => {
     pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
     pdfServiceCallbackKey: process.env.PDF_SERVICE_CALLBACK_KEY || undefined,
     swaggerEnabled: isSwaggerEnabled(process.env),
+    holidayCategoryId: process.env.HOLIDAY_CATEGORY_ID
+      ? parseInt(process.env.HOLIDAY_CATEGORY_ID, 10)
+      : undefined,
+    holidayRoomId: process.env.HOLIDAY_ROOM_ID
+      ? parseInt(process.env.HOLIDAY_ROOM_ID, 10)
+      : undefined,
     corsOrigins: parseCorsOrigins(
       process.env.APP_CORS_ORIGINS,
       process.env.FRONTEND_DOMAIN,

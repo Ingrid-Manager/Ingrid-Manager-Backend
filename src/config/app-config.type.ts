@@ -23,4 +23,8 @@ export type AppConfig = {
   corsOrigins: string[];
   /** Swagger unter /docs bereitstellen (APP_SWAGGER_ENABLED) */
   swaggerEnabled: boolean;
+  /** Kategorie der importierten Ferien (HOLIDAY_CATEGORY_ID, Default 9999) */
+  holidayCategoryId?: number;
+  /** Raum der importierten Ferien (HOLIDAY_ROOM_ID, Default 9999) */
+  holidayRoomId?: number;
 };
