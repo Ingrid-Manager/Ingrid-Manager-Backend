@@ -55,6 +55,10 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   PDF_SERVICE_APP_KEY!: string;
+
+  @IsString()
+  @IsOptional()
+  PDF_SERVICE_CALLBACK_KEY!: string;
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -80,5 +84,6 @@ export default registerAs<AppConfig>('app', () => {
       process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
     pdfServiceBaseUrl: process.env.PDF_SERVICE_BASE_URL,
     pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
+    pdfServiceCallbackKey: process.env.PDF_SERVICE_CALLBACK_KEY || undefined,
   };
 });

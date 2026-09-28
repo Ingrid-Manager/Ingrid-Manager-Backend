@@ -12,6 +12,11 @@ export type AppConfig = {
   iconURL: string;
   /** Basis-URL des externen PDF-Render-Servers, z. B. "https://pdf.ingrid-manager.de" */
   pdfServiceBaseUrl?: string;
-  /** Geteiltes Secret zwischen Backend und PDF-Server (beide Richtungen) */
+  /** Secret für Anfragen des Backends an den PDF-Server (Bearer-Token) */
   pdfServiceAppKey?: string;
+  /**
+   * Optionales eigenes Secret für den Rückruf des PDF-Servers (X-App-Key).
+   * Ohne Angabe gilt pdfServiceAppKey für beide Richtungen.
+   */
+  pdfServiceCallbackKey?: string;
 };
