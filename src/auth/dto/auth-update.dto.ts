@@ -1,11 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  MinLength,
-  Matches,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsAppPassword } from '../../utils/validators/is-app-password.decorator';
 import { Transform } from 'class-transformer';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
 
@@ -30,11 +25,7 @@ export class AuthUpdateDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsNotEmpty()
-  @MinLength(8)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).+$/, {
-    message:
-      'Das Passwort muss Groß und Kleinbuchstaben, sowie mindestens eine Zahl oder ein Sonderzeichen beinhalten!',
-  })
+  @IsAppPassword()
   password?: string;
 
   @ApiPropertyOptional()

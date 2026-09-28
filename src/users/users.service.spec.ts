@@ -1,3 +1,4 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { UsersService } from './users.service';
@@ -15,6 +16,7 @@ describe('UsersService', () => {
     update: jest.Mock;
     create: jest.Mock;
     remove: jest.Mock;
+    countActiveAdmins: jest.Mock;
   };
   let auditLogService: {
     log: jest.Mock;
@@ -28,6 +30,7 @@ describe('UsersService', () => {
       update: jest.fn(),
       create: jest.fn(),
       remove: jest.fn(),
+      countActiveAdmins: jest.fn().mockResolvedValue(1),
     };
     auditLogService = {
       log: jest.fn().mockResolvedValue(undefined),
@@ -185,5 +188,80 @@ describe('UsersService', () => {
         entityId: 9,
       }),
     );
+  });
+
+  describe('last active admin', () => {
+    const activeAdmin = {
+      id: 1,
+      firstName: 'Letzte',
+      lastName: 'Admin',
+      role: { id: RoleEnum.admin },
+      status: { id: StatusEnum.active },
+    };
+
+    beforeEach(() => {
+      usersRepository.findById.mockResolvedValue(activeAdmin);
+      usersRepository.countActiveAdmins.mockResolvedValue(0);
+    });
+
+    it('should not delete the last active admin', async () => {
+      await expect(service.remove(1, { id: 1 })).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('should not demote or deactivate the last active admin', async () => {
+      await expect(
+        service.update(
+          1,
+          { role: { id: RoleEnum.user } } as any,
+          activeAdmin as any,
+        ),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await expect(
+        service.update(
+          1,
+          { status: { id: StatusEnum.blocked } } as any,
+          activeAdmin as any,
+        ),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      expect(usersRepository.update).not.toHaveBeenCalled();
+      expect(usersRepository.countActiveAdmins).toHaveBeenCalledWith(1);
+    });
+
+    it('should allow it when another active admin exists', async () => {
+      usersRepository.countActiveAdmins.mockResolvedValue(1);
+
+      await expect(service.remove(1, { id: 2 })).resolves.toBeUndefined();
+      expect(usersRepository.remove).toHaveBeenCalledWith(1);
+    });
+
+    it('should allow other changes of the last active admin', async () => {
+      usersRepository.update.mockResolvedValue(activeAdmin);
+
+      await service.update(1, { firstName: 'Neu' } as any, activeAdmin as any);
+
+      expect(usersRepository.update).toHaveBeenCalled();
+    });
+  });
+
+  it('should hash a new password with the configured cost factor', async () => {
+    usersRepository.findById.mockResolvedValue({
+      id: 4,
+      role: { id: RoleEnum.user },
+      status: { id: StatusEnum.active },
+    });
+    usersRepository.update.mockResolvedValue({ id: 4 });
+
+    await service.update(
+      4,
+      { password: 'Neues-Passwort1' } as any,
+      { id: 1, role: { id: RoleEnum.admin } } as any,
+    );
+
+    const [, payload] = usersRepository.update.mock.calls[0];
+    expect(payload.password).not.toBe('Neues-Passwort1');
+    expect(payload.password).toBeDefined();
   });
 });
