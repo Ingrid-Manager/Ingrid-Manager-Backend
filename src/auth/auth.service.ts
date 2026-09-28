@@ -2,7 +2,6 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -228,10 +227,13 @@ export class AuthService {
 
     const user = await this.usersService.findById(userId);
 
+    // Gleiches Fehlerformat wie bei ungültigem Hash und bei resetPassword()
     if (!user) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: `notFound`,
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          hash: `notFound`,
+        },
       });
     }
 
