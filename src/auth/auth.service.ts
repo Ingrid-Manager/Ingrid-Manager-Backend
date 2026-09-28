@@ -27,7 +27,6 @@ import { Session } from '../session/domain/session';
 import { SessionService } from '../session/session.service';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { User } from '../users/domain/user';
-//import { I18nService } from 'nestjs-i18n';
 import { t } from '../utils/i18n-errors';
 import authConfig from './config/auth.config';
 import { AuditLogService } from '../audit-log/audit-log.service';
