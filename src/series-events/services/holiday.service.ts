@@ -2,15 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CalendarEvent } from '../../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+
+import { resolveHolidayIds } from '../../config/holiday-ids';
 
 @Injectable()
 export class HolidayService {
-  private static readonly HOLIDAY_CATEGORY_ID = 9999;
-
   constructor(
     @InjectRepository(CalendarEvent)
     private readonly calendarRepo: Repository<CalendarEvent>,
+    private readonly configService: ConfigService,
   ) {}
+
+  private get holidayCategoryId(): number {
+    return resolveHolidayIds(this.configService).categoryId;
+  }
 
   async isSchoolHoliday(date: Date): Promise<boolean> {
     console.log('HOLIDAY CHECK', {
@@ -20,7 +26,7 @@ export class HolidayService {
     const holidays = await this.calendarRepo
       .createQueryBuilder('event')
       .where('event.categoryid = :categoryid', {
-        categoryid: HolidayService.HOLIDAY_CATEGORY_ID,
+        categoryid: this.holidayCategoryId,
       })
       .andWhere('event.deletedAt IS NULL')
       .select(['event.id', 'event.start', 'event.end', 'event.categoryid'])
@@ -36,14 +42,22 @@ export class HolidayService {
       })),
     );
 
+    const nextDay = new Date(date);
+    nextDay.setHours(0, 0, 0, 0);
+    nextDay.setDate(nextDay.getDate() + 1);
+
     const count = await this.calendarRepo
       .createQueryBuilder('event')
       .where('event.categoryid = :categoryid', {
-        categoryid: HolidayService.HOLIDAY_CATEGORY_ID,
+        categoryid: this.holidayCategoryId,
       })
       .andWhere('event.deletedAt IS NULL')
-      .andWhere('DATE(event.start) <= DATE(:date)', { date })
-      .andWhere('DATE(event.end) >= DATE(:date)', { date })
+      // Gleichbedeutend mit DATE(start) <= DATE(:date) AND
+      // DATE(end) > DATE(:date) (Ende exklusiv gespeichert), aber ohne
+      // Funktion auf den Spalten, damit der Index
+      // IDX_CALENDAR_EVENT_HOLIDAY_LOOKUP (categoryid, start, end) greift.
+      .andWhere('event.start < :nextDay', { nextDay })
+      .andWhere('event.end >= :nextDay', { nextDay })
       .getCount();
 
     console.log('HOLIDAY RESULT', {

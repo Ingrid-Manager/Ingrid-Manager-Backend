@@ -13,6 +13,8 @@ import { SeriesFrequency } from '../../../../frequencys.enum';
 
 @Index('IDX_SERIES_EVENT_ACTIVE', ['active'])
 @Index('IDX_SERIES_EVENT_LAST_GENERATED', ['lastGeneratedUntil'])
+@Index('IDX_SERIES_EVENT_ROOM', ['roomid'])
+@Index('IDX_SERIES_EVENT_CREATED_BY', ['createdbyid'])
 @Entity('seriesevent')
 export class SeriesEvent {
   @PrimaryGeneratedColumn()
