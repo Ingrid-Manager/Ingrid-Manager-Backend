@@ -48,6 +48,8 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,
+    // Bewusst ohne Resolver (z. B. HeaderResolver): Texte (u. a. Mails)
+    // verwenden immer die per APP_FALLBACK_LANGUAGE konfigurierte Sprache.
     I18nModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -57,7 +59,9 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
         }),
         loaderOptions: {
           path: path.join(__dirname, 'i18n'),
-          watch: true,
+          // Datei-Watcher nur in der Entwicklung
+          watch:
+            configService.get('app.nodeEnv', { infer: true }) !== 'production',
         },
       }),
     }),
