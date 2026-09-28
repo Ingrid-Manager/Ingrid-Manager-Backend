@@ -19,6 +19,8 @@ import { SeriesEvent } from '../../../../../series-events/infrastructure/relatio
 @Index('IDX_CALENDAR_EVENT_ROOM_START_END', ['roomid', 'start', 'end'])
 @Index('IDX_CALENDAR_EVENT_HOLIDAY_LOOKUP', ['categoryid', 'start', 'end'])
 @Index('IDX_CALENDAR_EVENT_DELETED_AT', ['deletedAt'])
+// Minütliche Abfrage der Heizungssteuerung (findActiveHeatingEvents)
+@Index('IDX_CALENDAR_EVENT_HEATING', ['isBackground', 'deletedAt', 'end'])
 @Entity('calendarevent')
 export class CalendarEvent {
   @PrimaryGeneratedColumn()
