@@ -789,4 +789,39 @@ describe('HeatingScheduler', () => {
       expect(scheduler.isRunning()).toBe(false);
     });
   });
+
+  describe('graceful shutdown', () => {
+    it('should wait for a running heating run and not start new runs', async () => {
+      let release: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      roomsService.findAllForHeating.mockImplementationOnce(async () => {
+        await blocked;
+        return rooms.map((room) => ({ ...room }));
+      });
+
+      const run = scheduler.trigger();
+      scheduler.trigger(); // nachgeholter Lauf wird beim Shutdown verworfen
+
+      let destroyed = false;
+      const destroy = scheduler.onModuleDestroy().then(() => {
+        destroyed = true;
+      });
+
+      await Promise.resolve();
+      expect(destroyed).toBe(false);
+
+      release();
+      await run;
+      await destroy;
+
+      expect(destroyed).toBe(true);
+      expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(1);
+
+      await scheduler.handleCron();
+      expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(1);
+    });
+  });
 });

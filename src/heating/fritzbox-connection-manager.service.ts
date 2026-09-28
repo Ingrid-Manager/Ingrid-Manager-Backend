@@ -1,9 +1,9 @@
 import {
+  BeforeApplicationShutdown,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
@@ -20,6 +20,9 @@ import {
 
 export const FRITZBOX_MANAGER = Symbol('FRITZBOX_MANAGER');
 
+/* Höchstdauer für das Abmelden von allen FRITZ!Boxen beim Shutdown. */
+export const SHUTDOWN_DISCONNECT_TIMEOUT_MS = 5_000;
+
 /*
  * Verwaltet genau eine FRITZ!Box-Verbindung pro AVM-Location.
  *
@@ -32,7 +35,7 @@ export const FRITZBOX_MANAGER = Symbol('FRITZBOX_MANAGER');
  * sich, wird die Verbindung der Location neu aufgebaut.
  */
 @Injectable()
-export class FritzBoxConnectionManager implements OnModuleDestroy {
+export class FritzBoxConnectionManager implements BeforeApplicationShutdown {
   private readonly logger = new Logger(FritzBoxConnectionManager.name);
 
   private readonly fingerprints = new Map<number, string>();
@@ -91,8 +94,42 @@ export class FritzBoxConnectionManager implements OnModuleDestroy {
     }
   }
 
-  async onModuleDestroy(): Promise<void> {
-    await this.manager.disconnectAll();
+  /*
+   * Erst nach onModuleDestroy (dort wartet der HeatingScheduler auf einen
+   * laufenden Heizlauf), aber noch vor dem Schließen der Datenbank. Nicht
+   * erreichbare FRITZ!Boxen verzögern den Shutdown höchstens um
+   * SHUTDOWN_DISCONNECT_TIMEOUT_MS.
+   */
+  async beforeApplicationShutdown(): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(
+        () => resolve('timeout'),
+        SHUTDOWN_DISCONNECT_TIMEOUT_MS,
+      );
+      timer.unref?.();
+    });
+
+    try {
+      const result = await Promise.race([
+        this.manager.disconnectAll().then(() => 'done' as const),
+        timeout,
+      ]);
+
+      if (result === 'timeout') {
+        this.logger.warn(
+          `Disconnecting from the FRITZ!Boxes took longer than ${SHUTDOWN_DISCONNECT_TIMEOUT_MS} ms; shutting down anyway`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Could not disconnect all FRITZ!Boxes on shutdown: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async resolveConnection(locationId: number): Promise<FritzBox> {
