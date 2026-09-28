@@ -42,16 +42,22 @@ export class HolidayService {
       })),
     );
 
+    const nextDay = new Date(date);
+    nextDay.setHours(0, 0, 0, 0);
+    nextDay.setDate(nextDay.getDate() + 1);
+
     const count = await this.calendarRepo
       .createQueryBuilder('event')
       .where('event.categoryid = :categoryid', {
         categoryid: this.holidayCategoryId,
       })
       .andWhere('event.deletedAt IS NULL')
-      .andWhere('DATE(event.start) <= DATE(:date)', { date })
-      // Das Ende ist exklusiv gespeichert (Tag nach dem letzten Ferientag,
-      // wie bei ganztägigen Terminen in FullCalendar)
-      .andWhere('DATE(event.end) > DATE(:date)', { date })
+      // Gleichbedeutend mit DATE(start) <= DATE(:date) AND
+      // DATE(end) > DATE(:date) (Ende exklusiv gespeichert), aber ohne
+      // Funktion auf den Spalten, damit der Index
+      // IDX_CALENDAR_EVENT_HOLIDAY_LOOKUP (categoryid, start, end) greift.
+      .andWhere('event.start < :nextDay', { nextDay })
+      .andWhere('event.end >= :nextDay', { nextDay })
       .getCount();
 
     console.log('HOLIDAY RESULT', {
