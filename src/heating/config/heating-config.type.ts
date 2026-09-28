@@ -11,12 +11,4 @@ export type HeatingConfig = {
   hallwayRoomIds: number[];
   /* Minütlicher Scheduler aktiv? (HEATING_SCHEDULER_ENABLED, Default true) */
   schedulerEnabled: boolean;
-  /*
-   * Datei für das ausführliche Fehlerprotokoll der Heizungssteuerung
-   * (HEATING_LOG_FILE, Default logs/heating.log). null = abgeschaltet
-   * (HEATING_LOG_FILE=false).
-   */
-  logFile?: string | null;
-  /* Maximale Dateigröße vor der Rotation (HEATING_LOG_FILE_MAX_SIZE_MB, Default 10) */
-  logFileMaxSizeMb?: number;
 };

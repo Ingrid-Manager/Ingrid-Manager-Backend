@@ -27,27 +27,13 @@ class EnvironmentVariablesValidator {
   @IsIn(['true', 'false'])
   @IsOptional()
   HEATING_SCHEDULER_ENABLED!: string;
-
-  @IsString()
-  @IsOptional()
-  HEATING_LOG_FILE!: string;
-
-  @IsString()
-  @Matches(/^\d+$/)
-  @IsOptional()
-  HEATING_LOG_FILE_MAX_SIZE_MB!: string;
 }
-
-export const DEFAULT_HEATING_LOG_FILE = 'logs/heating.log';
-export const DEFAULT_HEATING_LOG_FILE_MAX_SIZE_MB = 10;
 
 const HEATING_ENV_KEYS = [
   'HEATING_SEASON_START',
   'HEATING_SEASON_END',
   'HEATING_HALLWAY_ROOM_ID',
   'HEATING_SCHEDULER_ENABLED',
-  'HEATING_LOG_FILE',
-  'HEATING_LOG_FILE_MAX_SIZE_MB',
 ] as const;
 
 /*
@@ -78,17 +64,6 @@ export function parseHallwayRoomIds(value: string | undefined): number[] {
     .split(',')
     .map((item) => Number(item.trim()))
     .filter((id) => Number.isInteger(id) && id > 0);
-}
-
-/*
- * Nicht gesetzt: Default-Datei, "false"/"off": abgeschaltet (null).
- */
-export function parseHeatingLogFile(value: string | undefined): string | null {
-  if (!value) {
-    return DEFAULT_HEATING_LOG_FILE;
-  }
-
-  return ['false', 'off'].includes(value.toLowerCase()) ? null : value;
 }
 
 /*
@@ -129,9 +104,5 @@ export default registerAs<HeatingConfig>('heating', () => {
     seasonEnd: env.HEATING_SEASON_END,
     hallwayRoomIds: parseHallwayRoomIds(env.HEATING_HALLWAY_ROOM_ID),
     schedulerEnabled: env.HEATING_SCHEDULER_ENABLED !== 'false',
-    logFile: parseHeatingLogFile(env.HEATING_LOG_FILE),
-    logFileMaxSizeMb: env.HEATING_LOG_FILE_MAX_SIZE_MB
-      ? Number(env.HEATING_LOG_FILE_MAX_SIZE_MB)
-      : DEFAULT_HEATING_LOG_FILE_MAX_SIZE_MB,
   };
 });

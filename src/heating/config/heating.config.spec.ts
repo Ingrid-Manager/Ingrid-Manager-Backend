@@ -1,8 +1,6 @@
 import {
   assertValidHeatingSeason,
-  DEFAULT_HEATING_LOG_FILE,
   parseHallwayRoomIds,
-  parseHeatingLogFile,
   readHeatingEnv,
 } from './heating.config';
 
@@ -15,16 +13,12 @@ describe('heating config', () => {
           HEATING_SEASON_END: '   ',
           HEATING_HALLWAY_ROOM_ID: '',
           HEATING_SCHEDULER_ENABLED: '',
-          HEATING_LOG_FILE: ' ',
-          HEATING_LOG_FILE_MAX_SIZE_MB: '',
         }),
       ).toEqual({
         HEATING_SEASON_START: undefined,
         HEATING_SEASON_END: undefined,
         HEATING_HALLWAY_ROOM_ID: undefined,
         HEATING_SCHEDULER_ENABLED: undefined,
-        HEATING_LOG_FILE: undefined,
-        HEATING_LOG_FILE_MAX_SIZE_MB: undefined,
       });
     });
 
@@ -35,16 +29,12 @@ describe('heating config', () => {
           HEATING_SEASON_END: '04-30',
           HEATING_HALLWAY_ROOM_ID: '3, 7',
           HEATING_SCHEDULER_ENABLED: 'false',
-          HEATING_LOG_FILE: ' /var/log/heating.log ',
-          HEATING_LOG_FILE_MAX_SIZE_MB: '5',
         }),
       ).toEqual({
         HEATING_SEASON_START: '10-01',
         HEATING_SEASON_END: '04-30',
         HEATING_HALLWAY_ROOM_ID: '3, 7',
         HEATING_SCHEDULER_ENABLED: 'false',
-        HEATING_LOG_FILE: '/var/log/heating.log',
-        HEATING_LOG_FILE_MAX_SIZE_MB: '5',
       });
     });
 
@@ -54,26 +44,7 @@ describe('heating config', () => {
         'HEATING_SEASON_END',
         'HEATING_HALLWAY_ROOM_ID',
         'HEATING_SCHEDULER_ENABLED',
-        'HEATING_LOG_FILE',
-        'HEATING_LOG_FILE_MAX_SIZE_MB',
       ]);
-    });
-  });
-
-  describe('parseHeatingLogFile', () => {
-    it('should use the default file when not configured', () => {
-      expect(parseHeatingLogFile(undefined)).toBe(DEFAULT_HEATING_LOG_FILE);
-    });
-
-    it('should keep a configured path', () => {
-      expect(parseHeatingLogFile('/var/log/heating.log')).toBe(
-        '/var/log/heating.log',
-      );
-    });
-
-    it('should disable the log file with false or off', () => {
-      expect(parseHeatingLogFile('false')).toBeNull();
-      expect(parseHeatingLogFile('OFF')).toBeNull();
     });
   });
 

@@ -10,7 +10,6 @@ import { HeatingConfig } from './config/heating-config.type';
 import { HeatingError, HeatingErrorCode } from './domain/heating-error';
 import { HeatingClock, HeatingScheduler } from './heating-scheduler.service';
 import { HeatingAuditService } from './heating-audit.service';
-import { HeatingFileLogService } from './heating-file-log.service';
 import {
   AuditLogParams,
   AuditLogService,
@@ -232,10 +231,7 @@ describe('HeatingScheduler', () => {
       calendarEventsService as unknown as CalendarEventsService,
       heatingService,
       clock,
-      new HeatingAuditService(
-        auditLogService as unknown as AuditLogService,
-        { write: () => Promise.resolve() } as unknown as HeatingFileLogService,
-      ),
+      new HeatingAuditService(auditLogService as unknown as AuditLogService),
     );
   });
 
