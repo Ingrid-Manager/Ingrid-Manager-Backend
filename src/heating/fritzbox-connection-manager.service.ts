@@ -12,6 +12,7 @@ import { FritzBox, FritzBoxManager } from '../libs/fritzbox-aha/index.js';
 
 import { AvmLocationsService } from '../avm-locations/avm-locations.service';
 import { AvmConnection } from '../avm-locations/avm-connection.type';
+import { isAllowedFritzBoxUrl } from '../avm-locations/validation/is-fritzbox-url.validator';
 import {
   HeatingError,
   HeatingErrorCode,
@@ -108,6 +109,13 @@ export class FritzBoxConnectionManager implements OnModuleDestroy {
     }
 
     if (!box) {
+      if (!isAllowedFritzBoxUrl(connection.url)) {
+        this.logger.warn(
+          `FRITZ!Box of location ${locationId} is reached via plain HTTP on a public address; ` +
+            'the session id is transmitted unencrypted. Please switch the location to HTTPS.',
+        );
+      }
+
       try {
         box = this.manager.add({
           id,

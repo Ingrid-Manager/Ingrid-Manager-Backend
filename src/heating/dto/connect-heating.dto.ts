@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
+
+import { IsFritzBoxUrl } from '../../avm-locations/validation/is-fritzbox-url.validator';
 
 export class ConnectHeatingDto {
   @ApiProperty({
@@ -19,11 +21,10 @@ export class ConnectHeatingDto {
 
   @ApiProperty({
     example: 'http://192.168.178.1',
-    description: 'AHA URL der FRITZ!Box',
+    description:
+      'AHA URL der FRITZ!Box (HTTPS; HTTP nur für lokale bzw. private Adressen)',
   })
-  @IsUrl({
-    require_tld: false,
-  })
+  @IsFritzBoxUrl()
   ahaUrl: string;
 
   @ApiProperty({
