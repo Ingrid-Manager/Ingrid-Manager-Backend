@@ -14,4 +14,6 @@ export type AppConfig = {
   pdfServiceBaseUrl?: string;
   /** Geteiltes Secret zwischen Backend und PDF-Server (beide Richtungen) */
   pdfServiceAppKey?: string;
+  /** Für CORS zugelassene Origins (APP_CORS_ORIGINS bzw. FRONTEND_DOMAIN) */
+  corsOrigins: string[];
 };
