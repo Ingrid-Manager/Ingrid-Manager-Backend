@@ -17,6 +17,7 @@ import { IPaginationOptions } from '../utils/types/pagination-options';
 import { Role } from '../roles/domain/role';
 import { Status } from '../statuses/domain/status';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { isNumericEnumValue } from '../utils/numeric-enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
@@ -78,9 +79,7 @@ export class UsersService {
     let role: Role | undefined = undefined;
 
     if (createUserDto.role?.id) {
-      const roleObject = Object.values(RoleEnum)
-        .map(String)
-        .includes(String(createUserDto.role.id));
+      const roleObject = isNumericEnumValue(RoleEnum, createUserDto.role.id);
       if (!roleObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -98,9 +97,10 @@ export class UsersService {
     let status: Status | undefined = undefined;
 
     if (createUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(createUserDto.status.id));
+      const statusObject = isNumericEnumValue(
+        StatusEnum,
+        createUserDto.status.id,
+      );
       if (!statusObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -230,9 +230,7 @@ export class UsersService {
     let role: Role | undefined = undefined;
 
     if (updateUserDto.role?.id) {
-      const roleObject = Object.values(RoleEnum)
-        .map(String)
-        .includes(String(updateUserDto.role.id));
+      const roleObject = isNumericEnumValue(RoleEnum, updateUserDto.role.id);
       if (!roleObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -260,9 +258,10 @@ export class UsersService {
     let status: Status | undefined = undefined;
 
     if (updateUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(updateUserDto.status.id));
+      const statusObject = isNumericEnumValue(
+        StatusEnum,
+        updateUserDto.status.id,
+      );
       if (!statusObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
