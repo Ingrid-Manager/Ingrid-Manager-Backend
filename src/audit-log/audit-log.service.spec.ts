@@ -57,7 +57,9 @@ describe('AuditLogService', () => {
 
   describe('getUserLabel', () => {
     it('never throws when the user lookup fails, so callers can rely on it before their own action succeeds', async () => {
-      userRepository.findOne.mockRejectedValueOnce(new Error('connection lost'));
+      userRepository.findOne.mockRejectedValueOnce(
+        new Error('connection lost'),
+      );
 
       await expect(service.getUserLabel({ id: 9 })).resolves.toBe('User #9');
     });
@@ -88,6 +90,30 @@ describe('AuditLogService', () => {
       const changes = service.diff(before, after);
 
       expect(changes).toEqual({ firstName: { old: 'Alt', new: 'Neu' } });
+    });
+
+    it('should ignore fields that look like secrets but keep seriesid', () => {
+      const before = {
+        ahapassword: 'v1:a',
+        ahasid: 'sid-1',
+        accessToken: 'x',
+        clientSecret: 'y',
+        seriesid: 1,
+      };
+      const after = {
+        ahapassword: 'v1:b',
+        ahasid: 'sid-2',
+        accessToken: 'z',
+        clientSecret: 'w',
+        seriesid: 2,
+      };
+
+      expect(service.diff(before, after)).toEqual({
+        seriesid: { old: 1, new: 2 },
+      });
+      expect(Object.keys(service.snapshot(before, after))).toEqual([
+        'seriesid',
+      ]);
     });
 
     it('respects additional ignoreFields', () => {

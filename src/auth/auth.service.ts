@@ -2,7 +2,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  NotFoundException,
+  Logger,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -27,7 +27,6 @@ import { Session } from '../session/domain/session';
 import { SessionService } from '../session/session.service';
 import { StatusEnum } from '../statuses/statuses.enum';
 import { User } from '../users/domain/user';
-//import { I18nService } from 'nestjs-i18n';
 import { t } from '../utils/i18n-errors';
 import authConfig from './config/auth.config';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -37,6 +36,8 @@ import { AuditService } from '../audit-log/audit-service.enum';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private usersService: UsersService,
@@ -197,13 +198,34 @@ export class AuthService {
       },
     );
 
-    await this.mailService.userSignUp({
-      to: dto.email,
-      data: {
-        hash,
-      },
-      userName: user.firstName,
-    });
+    // Der Account ist zu diesem Zeitpunkt bereits angelegt. Ein Fehler beim
+    // Mailversand darf die Registrierung daher nicht mit HTTP 500 abbrechen
+    // (eine erneute Registrierung schlüge an der vergebenen Adresse fehl);
+    // er wird protokolliert, die Verwaltung kann den Account freischalten.
+    try {
+      await this.mailService.userSignUp({
+        to: dto.email,
+        data: {
+          hash,
+        },
+        userName: user.firstName,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      this.logger.error(
+        `Bestätigungsmail für Nutzer #${user.id} konnte nicht gesendet werden: ${message}`,
+      );
+      await this.auditLogService.log({
+        user: { id: Number(user.id) },
+        userLabel,
+        action: AuditAction.SYSTEM_ERROR,
+        service: AuditService.AUTH,
+        entityType: AuditEntityType.AUTH,
+        entityId: user.id,
+        summary: `Bestätigungsmail für ${userLabel} konnte nicht gesendet werden`,
+      });
+    }
   }
 
   async confirmEmail(hash: string): Promise<void> {
@@ -228,10 +250,13 @@ export class AuthService {
 
     const user = await this.usersService.findById(userId);
 
+    // Gleiches Fehlerformat wie bei ungültigem Hash und bei resetPassword()
     if (!user) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: `notFound`,
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          hash: `notFound`,
+        },
       });
     }
 
@@ -245,11 +270,11 @@ export class AuthService {
     // "inactive" = E-Mail bestätigt, wartet auf Freischaltung durch die
     // Verwaltung; "active" = freigeschaltet.
     if (user.status?.id?.toString() === StatusEnum.pending.toString()) {
-      user.status = {
-        id: StatusEnum.inactive,
-      };
-
-      await this.usersService.update(user.id, user, user);
+      await this.usersService.update(
+        user.id,
+        { status: { id: StatusEnum.inactive } },
+        user,
+      );
     }
   }
 
@@ -336,13 +361,11 @@ export class AuthService {
       });
     }
 
-    user.password = password;
-
     await this.sessionService.deleteByUserId({
       userId: user.id,
     });
 
-    await this.usersService.update(user.id, user, user);
+    await this.usersService.update(user.id, { password }, user);
 
     const userLabel = await this.auditLogService.getUserLabel({
       id: Number(user.id),
@@ -419,17 +442,17 @@ export class AuthService {
       }
     }
 
+    // Eine Änderung der eigenen E-Mail-Adresse ist (noch) nicht umgesetzt:
+    // statt sie still zu verwerfen und trotzdem Erfolg zu melden, wird sie
+    // abgelehnt. Bewusst ohne vorherige Existenzprüfung der neuen Adresse,
+    // damit der Endpunkt nicht verrät, ob eine Adresse bereits vergeben ist.
     if (userDto.email && userDto.email !== currentUser.email) {
-      const userByEmail = await this.usersService.findByEmail(userDto.email);
-
-      if (userByEmail && userByEmail.id !== currentUser.id) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            email: 'emailExists',
-          },
-        });
-      }
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          email: 'emailChangeNotSupported',
+        },
+      });
     }
 
     const passwordChanged = Boolean(userDto.password);

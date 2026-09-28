@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, Max, Min } from 'class-validator';
 
+import { IsHalfDegreeStep } from './is-half-degree-step.validator';
+
 export class SetTemperatureDto {
   @ApiProperty({
     example: 21,
@@ -12,5 +14,6 @@ export class SetTemperatureDto {
   @IsNumber()
   @Min(16)
   @Max(25)
+  @IsHalfDegreeStep()
   temperature!: number;
 }

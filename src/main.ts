@@ -31,7 +31,6 @@ async function bootstrap() {
   app.enableVersioning({
     type: VersioningType.URI,
   });
-  //app.useGlobalPipes(new ValidationPipe(validationOptions));
   app.useGlobalPipes(new I18nValidationPipe(validationOptions));
   app.useGlobalFilters(
     new I18nValidationExceptionFilter({
@@ -51,17 +50,9 @@ async function bootstrap() {
     .setDescription('API docs')
     .setVersion('1.0')
     .addBearerAuth()
-    .addGlobalParameters({
-      in: 'header',
-      required: false,
-      name: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
-      schema: {
-        example: 'en',
-      },
-    })
     .build();
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (configService.get('app.swaggerEnabled', { infer: true })) {
     const document = SwaggerModule.createDocument(app, options);
     SwaggerModule.setup('docs', app, document);
   }

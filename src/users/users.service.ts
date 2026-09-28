@@ -3,13 +3,14 @@ import {
   Injectable,
   UnprocessableEntityException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserRepository } from './infrastructure/persistence/user.repository';
 import { User } from './domain/user';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/password';
 import { AuthProvidersEnum } from '../auth/auth-providers.enum';
 import { RoleEnum } from '../roles/roles.enum';
 import { StatusEnum } from '../statuses/statuses.enum';
@@ -17,6 +18,7 @@ import { IPaginationOptions } from '../utils/types/pagination-options';
 import { Role } from '../roles/domain/role';
 import { Status } from '../statuses/domain/status';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { isNumericEnumValue } from '../utils/numeric-enum';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
@@ -54,15 +56,18 @@ export class UsersService {
     let password: string | undefined = undefined;
 
     if (createUserDto.password) {
-      const salt = await bcrypt.genSalt();
-      password = await bcrypt.hash(createUserDto.password, salt);
+      password = await hashPassword(createUserDto.password);
     }
 
     let email: string | null = null;
 
     if (createUserDto.email) {
+      // Inklusive soft-gelöschter User: deren Adresse belegt weiterhin den
+      // Unique-Index (Altbestand vor der Anonymisierung beim Löschen) und
+      // würde sonst beim Speichern mit HTTP 500 scheitern.
       const userObject = await this.usersRepository.findByEmail(
         createUserDto.email,
+        { withDeleted: true },
       );
       if (userObject) {
         throw new UnprocessableEntityException({
@@ -78,9 +83,7 @@ export class UsersService {
     let role: Role | undefined = undefined;
 
     if (createUserDto.role?.id) {
-      const roleObject = Object.values(RoleEnum)
-        .map(String)
-        .includes(String(createUserDto.role.id));
+      const roleObject = isNumericEnumValue(RoleEnum, createUserDto.role.id);
       if (!roleObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -98,9 +101,10 @@ export class UsersService {
     let status: Status | undefined = undefined;
 
     if (createUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(createUserDto.status.id));
+      const statusObject = isNumericEnumValue(
+        StatusEnum,
+        createUserDto.status.id,
+      );
       if (!statusObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -197,13 +201,17 @@ export class UsersService {
 
     const beforeUser = await this.usersRepository.findById(id);
 
+    if (!beforeUser) {
+      throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
+    }
+
     let password: string | undefined = undefined;
 
+    // updateUserDto.password ist immer ein Klartext-Passwort: Aufrufer
+    // übergeben nur die tatsächlich zu ändernden Felder (kein komplettes
+    // User-Objekt mit bereits gehashtem Passwort).
     if (updateUserDto.password) {
-      if (beforeUser && beforeUser?.password !== updateUserDto.password) {
-        const salt = await bcrypt.genSalt();
-        password = await bcrypt.hash(updateUserDto.password, salt);
-      }
+      password = await hashPassword(updateUserDto.password);
     }
 
     let email: string | null | undefined = undefined;
@@ -211,6 +219,7 @@ export class UsersService {
     if (updateUserDto.email) {
       const userObject = await this.usersRepository.findByEmail(
         updateUserDto.email,
+        { withDeleted: true },
       );
 
       if (userObject && userObject.id !== id) {
@@ -230,9 +239,7 @@ export class UsersService {
     let role: Role | undefined = undefined;
 
     if (updateUserDto.role?.id) {
-      const roleObject = Object.values(RoleEnum)
-        .map(String)
-        .includes(String(updateUserDto.role.id));
+      const roleObject = isNumericEnumValue(RoleEnum, updateUserDto.role.id);
       if (!roleObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -260,9 +267,10 @@ export class UsersService {
     let status: Status | undefined = undefined;
 
     if (updateUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(updateUserDto.status.id));
+      const statusObject = isNumericEnumValue(
+        StatusEnum,
+        updateUserDto.status.id,
+      );
       if (!statusObject) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -276,6 +284,11 @@ export class UsersService {
         id: updateUserDto.status.id,
       };
     }
+
+    await this.assertKeepsAnActiveAdmin(beforeUser, {
+      roleId: role?.id,
+      statusId: status?.id,
+    });
 
     const updated = await this.usersRepository.update(id, {
       // Do not remove comment below.
@@ -293,6 +306,43 @@ export class UsersService {
     await this.logUserUpdate(id, beforeUser, updateUserDto, currentUser);
 
     return updated;
+  }
+
+  /*
+   * Verhindert, dass der letzte aktive Admin gelöscht, herabgestuft oder
+   * deaktiviert wird - sonst könnte niemand mehr die Anwendung verwalten.
+   */
+  private async assertKeepsAnActiveAdmin(
+    target: User,
+    change: { roleId?: unknown; statusId?: unknown; removed?: boolean },
+  ): Promise<void> {
+    const isActiveAdmin =
+      Number(target.role?.id) === RoleEnum.admin &&
+      Number(target.status?.id) === StatusEnum.active;
+
+    if (!isActiveAdmin) {
+      return;
+    }
+
+    const losesActiveAdmin =
+      change.removed === true ||
+      (change.roleId !== undefined &&
+        Number(change.roleId) !== RoleEnum.admin) ||
+      (change.statusId !== undefined &&
+        Number(change.statusId) !== StatusEnum.active);
+
+    if (!losesActiveAdmin) {
+      return;
+    }
+
+    if ((await this.usersRepository.countActiveAdmins(target.id)) === 0) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: {
+          role: 'lastActiveAdmin',
+        },
+      });
+    }
   }
 
   private async logUserUpdate(
@@ -403,15 +453,19 @@ export class UsersService {
   ): Promise<void> {
     const target = await this.usersRepository.findById(id);
 
+    if (!target) {
+      throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
+    }
+
+    await this.assertKeepsAnActiveAdmin(target, { removed: true });
+
     await this.usersRepository.remove(id);
 
     if (actingUser) {
       const actingLabel = await this.auditLogService.getUserLabel({
         id: actingUser.id,
       });
-      const targetLabel = target
-        ? userDisplayLabel({ ...target, id })
-        : `User #${id}`;
+      const targetLabel = userDisplayLabel({ ...target, id });
 
       await this.auditLogService.log({
         user: { id: actingUser.id },

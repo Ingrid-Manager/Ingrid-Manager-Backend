@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -14,6 +15,8 @@ import { CryptoService } from '../crypto/crypto.service';
 
 @Injectable()
 export class AvmLocationsService {
+  private readonly logger = new Logger(AvmLocationsService.name);
+
   constructor(
     @InjectRepository(AvmLocation)
     private repo: Repository<AvmLocation>,
@@ -106,12 +109,43 @@ export class AvmLocationsService {
       );
     }
 
+    const { value: password, needsReEncryption } =
+      this.cryptoService.decryptWithMetadata(entity.ahapassword);
+
+    if (needsReEncryption) {
+      await this.reEncryptPassword(entity, password);
+    }
+
     return {
       locationId: entity.id,
       title: entity.title || `AVM Location ${entity.id}`,
       url: entity.ahaurl,
       username: entity.ahauser,
-      password: this.cryptoService.decrypt(entity.ahapassword),
+      password,
     };
+  }
+
+  /*
+   * Überführt ein Passwort im alten Format (bzw. mit dem vorherigen
+   * Schlüssel verschlüsselt) in das aktuelle Format. Ein Fehler dabei
+   * verhindert die Verbindung nicht; es wird beim nächsten Zugriff erneut
+   * versucht.
+   */
+  private async reEncryptPassword(
+    entity: AvmLocation,
+    password: string,
+  ): Promise<void> {
+    try {
+      await this.repo.update(
+        { id: entity.id },
+        { ahapassword: this.cryptoService.encrypt(password) },
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Passwort der AVM Location ${entity.id} konnte nicht neu verschlüsselt werden: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }

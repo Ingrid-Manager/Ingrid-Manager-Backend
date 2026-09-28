@@ -40,10 +40,27 @@ const DEFAULT_IGNORED_DIFF_FIELDS = [
   'updatedAt',
   'deletedAt',
   'password',
+  'previousPassword',
   'hash',
   'salt',
   'refreshToken',
+  'sid',
+  'ahasid',
 ];
+
+/*
+ * Zusätzlich zur Liste oben werden alle Felder ausgelassen, deren Name nach
+ * einem Geheimnis aussieht (z. B. ahapassword, secret, accessToken) - damit
+ * neue sensible Felder nicht versehentlich im Aktivitätsprotokoll landen.
+ */
+const SENSITIVE_FIELD_PATTERN = /(passwor[dt]|secret|token)/i;
+
+/* Höchstzahl der Einträge je Entität (GET /audit-log/:entityType/:entityId) */
+export const MAX_ENTITY_HISTORY_ENTRIES = 200;
+
+function isIgnoredField(key: string, ignored: Set<string>): boolean {
+  return ignored.has(key) || SENSITIVE_FIELD_PATTERN.test(key);
+}
 
 @Injectable()
 export class AuditLogService {
@@ -58,7 +75,8 @@ export class AuditLogService {
 
   async log(params: AuditLogParams): Promise<void> {
     try {
-      const userLabel = params.userLabel ?? (await this.getUserLabel(params.user));
+      const userLabel =
+        params.userLabel ?? (await this.getUserLabel(params.user));
 
       const entry = this.repo.create({
         userId: params.user?.id ?? null,
@@ -102,7 +120,7 @@ export class AuditLogService {
     const changes: Record<string, { old: unknown; new: unknown }> = {};
 
     for (const key of Object.keys(after)) {
-      if (ignored.has(key)) {
+      if (isIgnoredField(key, ignored)) {
         continue;
       }
 
@@ -139,7 +157,7 @@ export class AuditLogService {
     const fields: Record<string, { old: unknown; new: unknown }> = {};
 
     for (const key of keys) {
-      if (ignored.has(key)) {
+      if (isIgnoredField(key, ignored)) {
         continue;
       }
 
@@ -200,10 +218,15 @@ export class AuditLogService {
     };
   }
 
-  async findForEntity(entityType: string, entityId: string): Promise<AuditLog[]> {
+  /** Die neuesten MAX_ENTITY_HISTORY_ENTRIES Einträge zu einer Entität. */
+  async findForEntity(
+    entityType: string,
+    entityId: string,
+  ): Promise<AuditLog[]> {
     return this.repo.find({
       where: { entityType, entityId },
       order: { createdAt: 'DESC' },
+      take: MAX_ENTITY_HISTORY_ENTRIES,
     });
   }
 

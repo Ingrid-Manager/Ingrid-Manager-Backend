@@ -499,6 +499,25 @@ describe('heating rules', () => {
       expect(plan.roomDecisions).toEqual([]);
     });
 
+    it('should not keep the hallway heated for rooms without prelim time', () => {
+      const plan = planHeating({
+        now: NOW,
+        rooms: [
+          room({ heated: true, prelimTime: 0 }),
+          { ...hallwayRoom, heated: true },
+        ],
+        events: [],
+        hallways: new Map([[10, 99]]),
+      });
+
+      // Der Raum selbst bleibt unangetastet (nicht kalendergesteuert) ...
+      expect(plan.roomDecisions[0].action).toBeNull();
+      // ... hält aber den Flur nicht mehr dauerhaft warm.
+      expect(plan.actions.map((a) => [a.roomId, a.action, a.reason])).toEqual([
+        [99, 'COOL', 'HALLWAY_EMPTY'],
+      ]);
+    });
+
     it('should cool the hallway when the last room is cooled', () => {
       const plan = planHeating({
         now: NOW,

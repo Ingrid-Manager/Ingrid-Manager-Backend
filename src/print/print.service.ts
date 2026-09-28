@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalendarEventsService } from '../calendar-events/calendar-events.service';
 import { RoomsService } from '../rooms/rooms.service';
@@ -16,9 +21,11 @@ import {
   buildYearEvents,
   toSafeInlineJson,
   contrastTextColor,
+  sanitizeHexColor,
   PrintRoom,
 } from './print-fullcalendar-data';
 import { AllConfigType } from '../config/config.type';
+import { getIsoWeek } from './iso-week';
 import { CalendarEventFilterDto } from '../calendar-events/application/dto/calendar-event-filter.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditAction } from '../audit-log/audit-action.enum';
@@ -52,6 +59,8 @@ const PDF_OPTIONS_BY_TYPE: Record<
 
 @Injectable()
 export class PrintService {
+  private readonly logger = new Logger(PrintService.name);
+
   constructor(
     private readonly calendarEventsService: CalendarEventsService,
     private readonly roomsService: RoomsService,
@@ -149,7 +158,6 @@ export class PrintService {
     // einmalig nutzbaren Token ablegen und den externen PDF-Render-Server
     // bitten, genau diese URL zu laden (siehe PrintHtmlController /
     // RemotePdfRendererService für die Absicherung dieses Aufrufs).
-    const token = this.htmlCache.store(html);
     const backendDomain = this.configService.getOrThrow('app.backendDomain', {
       infer: true,
     });
@@ -166,13 +174,20 @@ export class PrintService {
     // offensichtlich wäre. Deshalb hier ein früher, eindeutiger Fehler
     // statt eines mysteriösen Fehlschlags weiter unten in der Kette.
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(backendDomain)) {
-      throw new Error(
+      this.logger.error(
         `BACKEND_DOMAIN ist auf "${backendDomain}" gesetzt (bzw. nicht konfiguriert). ` +
           'Für die Druckfunktion muss dies die von außen erreichbare Adresse ' +
           'dieses Backends sein (z. B. "https://backend.ingrid-manager.de"), ' +
           'da der externe PDF-Server darüber das generierte HTML abruft.',
       );
+      throw new ServiceUnavailableException(
+        'Die Druckfunktion ist nicht vollständig konfiguriert (BACKEND_DOMAIN).',
+      );
     }
+
+    // Erst nach der Konfigurationsprüfung ablegen, damit bei einer
+    // Fehlkonfiguration kein ungenutzter Eintrag im Cache verbleibt.
+    const token = this.htmlCache.store(html);
 
     const apiPrefix = this.configService.getOrThrow('app.apiPrefix', {
       infer: true,
@@ -249,12 +264,16 @@ export class PrintService {
       );
     }
 
-    return rooms.map((room) => ({
-      id: room.id,
-      title: room.title,
-      color: room.color,
-      textColor: contrastTextColor(room.color),
-    }));
+    return rooms.map((room) => {
+      const color = sanitizeHexColor(room.color);
+
+      return {
+        id: room.id,
+        title: room.title,
+        color,
+        textColor: contrastTextColor(color),
+      };
+    });
   }
 
   private toDateOnlyIso(date: Date): string {
@@ -276,10 +295,11 @@ export class PrintService {
         const start = this.startOfWeek(date);
         const end = new Date(start);
         end.setDate(end.getDate() + 7);
+        const { week, year } = getIsoWeek(start);
         return {
           start,
           end,
-          rangeLabel: `KW ${this.getIsoWeekNumber(start)} · ${start.getFullYear()}`,
+          rangeLabel: `KW ${week} · ${year}`,
         };
       }
       case PrintViewType.month: {
@@ -310,15 +330,5 @@ export class PrintService {
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - day);
     return d;
-  }
-
-  private getIsoWeekNumber(date: Date): number {
-    const d = new Date(
-      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-    );
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 }

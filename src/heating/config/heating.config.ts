@@ -3,6 +3,7 @@ import { registerAs } from '@nestjs/config';
 import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 import validateConfig from '../../utils/validate-config';
 import { HeatingConfig } from './heating-config.type';
+import { parseHeatingSeason } from '../domain/heating-season';
 
 const MONTH_DAY_PATTERN = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
@@ -65,10 +66,38 @@ export function parseHallwayRoomIds(value: string | undefined): number[] {
     .filter((id) => Number.isInteger(id) && id > 0);
 }
 
+/*
+ * Die Regex-Prüfung oben lässt z. B. "02-30" durch. Eine ungültige oder nur
+ * halb konfigurierte Heizsaison würde die Heizungssteuerung zur Laufzeit
+ * still abschalten; deshalb bricht bereits der Start mit einer klaren
+ * Meldung ab. Ganz ohne Saison (beide Werte leer) startet das Backend.
+ */
+export function assertValidHeatingSeason(
+  start: string | undefined,
+  end: string | undefined,
+): void {
+  if (!start && !end) {
+    return;
+  }
+
+  if (!start || !end) {
+    throw new Error(
+      'HEATING_SEASON_START und HEATING_SEASON_END müssen gemeinsam gesetzt werden',
+    );
+  }
+
+  if (!parseHeatingSeason(start, end)) {
+    throw new Error(
+      `Ungültige Heizsaison "${start}" bis "${end}" (erwartet gültige Kalendertage im Format MM-DD, z. B. 10-01)`,
+    );
+  }
+}
+
 export default registerAs<HeatingConfig>('heating', () => {
   const env = readHeatingEnv(process.env);
 
   validateConfig(env, EnvironmentVariablesValidator);
+  assertValidHeatingSeason(env.HEATING_SEASON_START, env.HEATING_SEASON_END);
 
   return {
     seasonStart: env.HEATING_SEASON_START,

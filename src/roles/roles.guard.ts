@@ -10,8 +10,10 @@ export class RolesGuard implements CanActivate {
       'roles',
       [context.getClass(), context.getHandler()],
     );
-    if (!roles.length) {
-      return true;
+    // Ohne (oder mit leerer) @Roles-Angabe wird der Zugriff verweigert,
+    // statt mit einem TypeError (HTTP 500) abzubrechen.
+    if (!roles?.length) {
+      return false;
     }
     const request = context.switchToHttp().getRequest();
 

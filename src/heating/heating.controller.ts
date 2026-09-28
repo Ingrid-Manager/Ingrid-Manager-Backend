@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+  VERSION_NEUTRAL,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import {
@@ -16,6 +24,7 @@ import { RoleEnum } from '../roles/roles.enum';
 import { HeatingService } from './heating.service';
 import { ConnectHeatingDto } from './dto/connect-heating.dto';
 import { SetTemperatureDto } from './dto/set-temperature.dto';
+import { ParseAinPipe } from './ain.pipe';
 
 /*
  * Diagnose- und Steuerungsendpunkte für FRITZ!Box-Thermostate.
@@ -23,12 +32,16 @@ import { SetTemperatureDto } from './dto/set-temperature.dto';
  * Nur für Administration/Verwaltung: die Endpunkte setzen Temperaturen und
  * lassen das Backend über POST /heating/connect Verbindungen zu beliebigen
  * URLs aufbauen (sonst SSRF-Vektor für nicht angemeldete Aufrufer).
+ *
+ * Wie alle anderen Controller unter /api/v1/heating erreichbar. Die frühere,
+ * unversionierte Route /api/heating bleibt übergangsweise (VERSION_NEUTRAL)
+ * erhalten, damit bestehende Aufrufer nicht brechen.
  */
 @ApiTags('Heating')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles(RoleEnum.admin, RoleEnum.verwaltung)
-@Controller('heating')
+@Controller({ path: 'heating', version: ['1', VERSION_NEUTRAL] })
 export class HeatingController {
   constructor(private readonly heatingService: HeatingService) {}
 
@@ -80,7 +93,7 @@ export class HeatingController {
   }
 
   @Get('devices/:ain')
-  getDevice(@Param('ain') ain: string) {
+  getDevice(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.getDevice(ain);
   }
 
@@ -90,7 +103,7 @@ export class HeatingController {
   }
 
   @Get('groups/:ain/isGroup')
-  isGroup(@Param('ain') ain: string) {
+  isGroup(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.isGroup(ain);
   }
 
@@ -120,10 +133,13 @@ export class HeatingController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Zieltemperatur wurde gesetzt',
+    description:
+      'Zieltemperatur wurde gesetzt. Diagnose-Eingriff: Der Heizzustand der ' +
+      'kalendergesteuerten Heizung wird dabei nicht verändert, der nächste ' +
+      'Zustandswechsel des Schedulers überschreibt den Wert.',
   })
   async setTemperature(
-    @Param('ain') ain: string,
+    @Param('ain', ParseAinPipe) ain: string,
     @Body() dto: SetTemperatureDto,
   ) {
     return this.heatingService.setTemperature(ain, dto.temperature);
@@ -142,7 +158,7 @@ export class HeatingController {
     status: 200,
     description: 'Aktuelle Temperatur und Zieltemperatur',
   })
-  getTemperature(@Param('ain') ain: string) {
+  getTemperature(@Param('ain', ParseAinPipe) ain: string) {
     return this.heatingService.getTemperature(ain);
   }
 }

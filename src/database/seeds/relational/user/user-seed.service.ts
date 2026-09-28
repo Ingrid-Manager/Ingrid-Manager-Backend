@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../../../../utils/password';
 import { RoleEnum } from '../../../../roles/roles.enum';
 import { StatusEnum } from '../../../../statuses/statuses.enum';
 import { UserEntity } from '../../../../users/infrastructure/persistence/relational/entities/user.entity';
@@ -24,8 +24,7 @@ export class UserSeedService {
     });
 
     if (!countAdmin) {
-      const salt = await bcrypt.genSalt();
-      const password = await bcrypt.hash('secret', salt);
+      const password = await hashPassword('secret');
 
       await this.repository.save(
         this.repository.create({
@@ -54,8 +53,7 @@ export class UserSeedService {
     });
 
     if (!countUser) {
-      const salt = await bcrypt.genSalt();
-      const password = await bcrypt.hash('secret', salt);
+      const password = await hashPassword('secret');
 
       await this.repository.save(
         this.repository.create({

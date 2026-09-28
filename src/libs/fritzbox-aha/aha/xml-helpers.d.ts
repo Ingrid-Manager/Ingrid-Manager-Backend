@@ -1,5 +1,7 @@
-import { XMLParser } from 'fast-xml-parser';
-export declare const sharedXmlParser: XMLParser;
+/** Parses AHA XML responses; rejects documents with a DOCTYPE declaration. */
+export declare const sharedXmlParser: {
+    parse(xml: string): unknown;
+};
 export declare function readString(record: Record<string, unknown>, key: string, fallback?: string): string;
 export declare function readOptionalString(record: Record<string, unknown>, key: string): string | undefined;
 export declare function readBoolean(record: Record<string, unknown>, key: string, fallback: boolean): boolean;
