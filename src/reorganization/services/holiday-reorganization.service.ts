@@ -86,7 +86,7 @@ export class HolidayReorganizationService {
 
     if (!holidayCategory) {
       throw new Error(
-        `Kategorie "Ferien" (ID ${holidayIds.categoryId}, HOLIDAY_CATEGORY_ID) nicht gefunden`,
+        `Kategorie "Ferien" (ID ${holidayIds.categoryId}, HOLIDAY_CATEGORY_ID) nicht gefunden; wird per "npm run seed:run:relational" angelegt`,
       );
     }
 
@@ -98,7 +98,7 @@ export class HolidayReorganizationService {
 
     if (!holidayRoom) {
       throw new Error(
-        `Raum "Ferien Dummy" (ID ${holidayIds.roomId}, HOLIDAY_ROOM_ID) nicht gefunden`,
+        `Raum "Ferien Dummy" (ID ${holidayIds.roomId}, HOLIDAY_ROOM_ID) nicht gefunden; wird per "npm run seed:run:relational" angelegt`,
       );
     }
 
