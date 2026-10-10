@@ -1,3 +1,7 @@
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { UsersService } from './users.service';
@@ -185,5 +189,60 @@ describe('UsersService', () => {
         entityId: 9,
       }),
     );
+  });
+
+  it('should reject role names instead of numeric role ids', async () => {
+    usersRepository.findById.mockResolvedValue({
+      id: 9,
+      role: { id: RoleEnum.user },
+    });
+
+    await expect(
+      service.update(
+        9,
+        { role: { id: 'admin' } } as any,
+        { id: 1, role: { id: RoleEnum.admin } } as any,
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(usersRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('should reject an email that still belongs to a deleted user', async () => {
+    const findByEmail = jest.fn().mockResolvedValue({
+      id: 3,
+      email: 'old@example.com',
+      deletedAt: new Date(),
+    });
+    (usersRepository as unknown as { findByEmail: jest.Mock }).findByEmail =
+      findByEmail;
+
+    await expect(
+      service.create({
+        email: 'old@example.com',
+        firstName: 'Neu',
+        lastName: 'Nutzer',
+      } as any),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(findByEmail).toHaveBeenCalledWith('old@example.com', {
+      withDeleted: true,
+    });
+    expect(usersRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('should answer with 404 when updating or deleting an unknown user', async () => {
+    usersRepository.findById.mockResolvedValue(null);
+
+    await expect(
+      service.update(
+        404,
+        { firstName: 'X' } as any,
+        { id: 1, role: { id: RoleEnum.admin } } as any,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove(404, { id: 1 })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(usersRepository.update).not.toHaveBeenCalled();
+    expect(usersRepository.remove).not.toHaveBeenCalled();
   });
 });

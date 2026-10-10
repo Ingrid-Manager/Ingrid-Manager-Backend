@@ -14,6 +14,8 @@ import { AuditAction } from '../audit-log/audit-action.enum';
 import { AuditEntityType } from '../audit-log/audit-entity-type.enum';
 import { AuditService } from '../audit-log/audit-service.enum';
 import { TransferOwnerDto } from './dto/transfer-owner.dto';
+import { StatusEnum } from '../statuses/statuses.enum';
+import { RoleEnum } from '../roles/roles.enum';
 
 interface ActingUser {
   id: number;
@@ -45,6 +47,21 @@ export class OwnershipTransferService {
     if (!newOwner) {
       throw new NotFoundException(
         `Nutzer #${dto.newOwnerId} wurde nicht gefunden.`,
+      );
+    }
+
+    // Nur aktive Nutzer mit Schreibrechten können Termine besitzen: Gäste
+    // dürfen keine Termine bearbeiten, inaktive/gesperrte Nutzer nicht
+    // anmelden.
+    if (Number(newOwner.status?.id) !== StatusEnum.active) {
+      throw new BadRequestException(
+        `Nutzer #${dto.newOwnerId} ist nicht aktiv und kann keine Termine übernehmen.`,
+      );
+    }
+
+    if (Number(newOwner.role?.id) === RoleEnum.guest) {
+      throw new BadRequestException(
+        `Nutzer #${dto.newOwnerId} ist Gast und kann keine Termine übernehmen.`,
       );
     }
 
@@ -98,14 +115,17 @@ export class OwnershipTransferService {
         series.createdbyid = newOwnerId;
         await manager.save(series);
 
-        const result = await manager
+        // Alle Termine der Serie (auch gelöschte) wechseln den Besitzer,
+        // damit die Serie einheitlich bleibt; gemeldet wird aber nur die
+        // Zahl der nicht gelöschten Termine (count() filtert Soft-Deletes).
+        await manager
           .createQueryBuilder()
           .update(CalendarEvent)
           .set({ createdbyid: newOwnerId })
           .where('seriesid = :seriesId', { seriesId })
           .execute();
 
-        return result.affected ?? 0;
+        return manager.count(CalendarEvent, { where: { seriesid: seriesId } });
       },
     );
 

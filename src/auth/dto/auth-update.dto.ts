@@ -20,7 +20,11 @@ export class AuthUpdateDto {
   @IsNotEmpty({ message: 'mustBeNotEmpty' })
   lastName?: string;
 
-  @ApiPropertyOptional({ example: 'new.email@example.com' })
+  @ApiPropertyOptional({
+    example: 'john.doe@example.com',
+    description:
+      'Nur die aktuelle Adresse ist zulässig; eine Änderung der E-Mail-Adresse wird mit 422 abgelehnt.',
+  })
   @IsOptional()
   @IsNotEmpty()
   @IsEmail()

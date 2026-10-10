@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -66,12 +66,23 @@ export interface HeatingRunResult {
  *   9. Zustandswechsel und Fehler ins Aktivitätsprotokoll schreiben
  */
 @Injectable()
-export class HeatingScheduler {
+export class HeatingScheduler implements OnModuleDestroy {
   private readonly logger = new Logger(HeatingScheduler.name);
 
   private currentRun: Promise<HeatingRunResult> | null = null;
   private rerunRequested = false;
+  private stopping = false;
   private readonly reportedConfigErrors = new Set<string>();
+
+  /*
+   * Log-Meldungen des vorherigen bzw. aktuellen Laufs. Ein Fehler, der in
+   * jedem Lauf erneut auftritt (z. B. eine dauerhaft nicht erreichbare
+   * FRITZ!Box), wird nur beim ersten Auftreten als error/warn geloggt und
+   * danach als debug - statt ca. 1440-mal am Tag. Das Aktivitätsprotokoll
+   * unterdrückt Duplikate bereits selbst (HeatingAuditService).
+   */
+  private previousRunMessages = new Set<string>();
+  private currentRunMessages = new Set<string>();
 
   constructor(
     private readonly configService: ConfigService<AllConfigType>,
@@ -85,11 +96,27 @@ export class HeatingScheduler {
 
   @Cron(CronExpression.EVERY_MINUTE, { name: HEATING_CRON_JOB })
   async handleCron(): Promise<void> {
-    if (!this.getConfig().schedulerEnabled) {
+    if (this.stopping || !this.getConfig().schedulerEnabled) {
       return;
     }
 
     await this.trigger();
+  }
+
+  /*
+   * Graceful Shutdown: Ein laufender Heizlauf wird noch abgeschlossen, bevor
+   * die FRITZ!Box-Verbindungen (FritzBoxConnectionManager, erst in
+   * beforeApplicationShutdown) und die Datenbank geschlossen werden. Danach
+   * startet kein weiterer Lauf mehr.
+   */
+  async onModuleDestroy(): Promise<void> {
+    this.stopping = true;
+    this.rerunRequested = false;
+
+    if (this.currentRun) {
+      this.logger.log('Waiting for the running heating run before shutdown');
+      await this.currentRun.catch(() => undefined);
+    }
   }
 
   /*
@@ -121,7 +148,7 @@ export class HeatingScheduler {
   private async runQueued(): Promise<HeatingRunResult> {
     let result = await this.run(this.clock.now());
 
-    while (this.rerunRequested) {
+    while (this.rerunRequested && !this.stopping) {
       this.rerunRequested = false;
       result = await this.run(this.clock.now());
     }
@@ -143,7 +170,11 @@ export class HeatingScheduler {
       labels: { rooms: new Map(), locations: new Map(), events: new Map() },
     };
 
+    this.currentRunMessages = new Set();
+
     await this.execute(now, result);
+
+    this.logResolvedErrors();
 
     // 9. Zustandswechsel und Fehler ins Aktivitätsprotokoll schreiben
     try {
@@ -172,15 +203,16 @@ export class HeatingScheduler {
           `HEATING_SEASON_START/HEATING_SEASON_END are missing or invalid ` +
             `(got "${config.seasonStart ?? ''}" / "${config.seasonEnd ?? ''}", expected MM-DD)`,
         );
-
-        return;
+      } else {
+        result.inSeason = isInSeason(now, season);
       }
-
-      result.inSeason = isInSeason(now, season);
 
       const rooms = await this.loadRooms(result.labels);
 
-      if (!result.inSeason) {
+      if (!season || !result.inSeason) {
+        // Ohne gültige Heizsaison wird nie geheizt: noch als beheizt
+        // markierte Räume werden (wie beim Saisonende) abgesenkt, damit
+        // sie nicht dauerhaft warm bleiben.
         // Einmaliges Absenken beim Verlassen der Heizsaison (idempotent über
         // den persistierten heated-Zustand).
         result.actions = planSeasonExit(rooms);
@@ -469,14 +501,28 @@ export class HeatingScheduler {
     this.recordError(result, error, alreadyReported ? 'debug' : 'error');
   }
 
+  private logResolvedErrors() {
+    for (const message of this.previousRunMessages) {
+      if (!this.currentRunMessages.has(message)) {
+        this.logger.log(`Resolved: ${message}`);
+      }
+    }
+
+    this.previousRunMessages = this.currentRunMessages;
+  }
+
   private recordError(
     result: HeatingRunResult,
     error: HeatingError,
-    level: 'error' | 'warn' | 'debug' = 'error',
+    requestedLevel: 'error' | 'warn' | 'debug' = 'error',
   ) {
     result.errors.push(error);
 
     const message = error.toLogMessage();
+    const alreadyLogged = this.previousRunMessages.has(message);
+    const level = alreadyLogged ? 'debug' : requestedLevel;
+
+    this.currentRunMessages.add(message);
 
     if (level === 'error') {
       this.logger.error(message);

@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateSeriesEventDto } from './create-series-event.dto';
 import { IsEnum, IsNumber, IsOptional } from 'class-validator';
 import { SeriesFrequency } from '../../frequencys.enum';

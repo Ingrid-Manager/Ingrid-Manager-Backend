@@ -1,4 +1,8 @@
-import { parseHallwayRoomIds, readHeatingEnv } from './heating.config';
+import {
+  assertValidHeatingSeason,
+  parseHallwayRoomIds,
+  readHeatingEnv,
+} from './heating.config';
 
 describe('heating config', () => {
   describe('readHeatingEnv', () => {
@@ -53,6 +57,34 @@ describe('heating config', () => {
     it('should return an empty list when not configured', () => {
       expect(parseHallwayRoomIds(undefined)).toEqual([]);
       expect(parseHallwayRoomIds('')).toEqual([]);
+    });
+  });
+
+  describe('assertValidHeatingSeason', () => {
+    it('should accept a valid or a missing season', () => {
+      expect(() => assertValidHeatingSeason('10-01', '04-30')).not.toThrow();
+      expect(() => assertValidHeatingSeason('02-29', '03-31')).not.toThrow();
+      expect(() =>
+        assertValidHeatingSeason(undefined, undefined),
+      ).not.toThrow();
+    });
+
+    it('should reject days that do not exist', () => {
+      expect(() => assertValidHeatingSeason('02-30', '04-30')).toThrow(
+        'Ungültige Heizsaison',
+      );
+      expect(() => assertValidHeatingSeason('10-01', '04-31')).toThrow(
+        'Ungültige Heizsaison',
+      );
+    });
+
+    it('should reject a season with only one boundary', () => {
+      expect(() => assertValidHeatingSeason('10-01', undefined)).toThrow(
+        'gemeinsam gesetzt',
+      );
+      expect(() => assertValidHeatingSeason(undefined, '04-30')).toThrow(
+        'gemeinsam gesetzt',
+      );
     });
   });
 });

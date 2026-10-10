@@ -19,6 +19,7 @@ import { RolesGuard } from '../roles/roles.guard';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './application/dto/create-room.dto';
 import { UpdateRoomDto } from './application/dto/update-room.dto';
+import { GetRoomDto } from './application/dto/get-room.dto';
 import { ApiParam } from '@nestjs/swagger';
 import { Room } from './infrastructure/relational/persistence/entities/room.entity';
 
@@ -38,7 +39,7 @@ export class RoomsController {
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
   @Post('find')
-  findOneWithBody(@Body() body: { id: number }) {
+  findOneWithBody(@Body() body: GetRoomDto) {
     return this.service.findOne(body.id);
   }
 
@@ -52,6 +53,14 @@ export class RoomsController {
   @Get('names')
   findNames() {
     return this.service.findNames();
+  }
+
+  // Muss nach 'list' und 'names' deklariert sein, damit diese Routen nicht
+  // als :id interpretiert werden.
+  @Roles(RoleEnum.admin, RoleEnum.verwaltung)
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findOne(id);
   }
 
   @Roles(RoleEnum.admin, RoleEnum.verwaltung)
@@ -71,11 +80,11 @@ export class RoomsController {
   @Delete(':id')
   @ApiParam({
     name: 'id',
-    type: String,
+    type: Number,
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: Room['id'], @Req() req): Promise<void> {
+  remove(@Param('id', ParseIntPipe) id: Room['id'], @Req() req): Promise<void> {
     return this.service.remove(id, req.user);
   }
 }

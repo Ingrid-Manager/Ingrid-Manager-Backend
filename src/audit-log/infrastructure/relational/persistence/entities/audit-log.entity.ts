@@ -15,6 +15,15 @@ import { AuditService } from '../../../../audit-service.enum';
 @Index('IDX_AUDITLOG_CREATED_AT', ['createdAt'])
 @Index('IDX_AUDITLOG_USER', ['userId'])
 @Index('IDX_AUDITLOG_SERVICE', ['service'])
+// Zusammengesetzte Indizes für die gefilterten, nach createdAt sortierten
+// Abfragen (Migration AddAuditLogCompositeIndexes1790600000000)
+@Index('IDX_AUDITLOG_SERVICE_CREATED_AT', ['service', 'createdAt'])
+@Index('IDX_AUDITLOG_USER_CREATED_AT', ['userId', 'createdAt'])
+@Index('IDX_AUDITLOG_ENTITY_CREATED_AT', [
+  'entityType',
+  'entityId',
+  'createdAt',
+])
 @Entity('auditlog')
 export class AuditLog {
   @PrimaryGeneratedColumn()

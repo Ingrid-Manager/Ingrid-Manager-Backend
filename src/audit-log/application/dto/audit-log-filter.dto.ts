@@ -6,10 +6,15 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { AuditAction } from '../../audit-action.enum';
+import { AuditEntityType } from '../../audit-entity-type.enum';
 import { AuditService } from '../../audit-service.enum';
+
+/* Obergrenze für page: vermeidet sehr teure OFFSET-Scans. */
+export const MAX_AUDIT_LOG_PAGE = 1000;
 
 export class AuditLogFilterDto {
   @IsOptional()
@@ -22,11 +27,12 @@ export class AuditLogFilterDto {
   service?: AuditService;
 
   @IsOptional()
-  @IsString()
-  entityType?: string;
+  @IsEnum(AuditEntityType)
+  entityType?: AuditEntityType;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   entityId?: string;
 
   @IsOptional()
@@ -45,6 +51,7 @@ export class AuditLogFilterDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(MAX_AUDIT_LOG_PAGE)
   page?: number = 1;
 
   @IsOptional()
@@ -53,4 +60,13 @@ export class AuditLogFilterDto {
   @Min(1)
   @Max(100)
   limit?: number = 25;
+}
+
+export class AuditLogEntityParamsDto {
+  @IsEnum(AuditEntityType)
+  entityType!: AuditEntityType;
+
+  @IsString()
+  @MaxLength(255)
+  entityId!: string;
 }

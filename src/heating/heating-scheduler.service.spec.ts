@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AllConfigType } from '../config/config.type';
@@ -297,6 +298,24 @@ describe('HeatingScheduler', () => {
       unreachable.clear();
       await scheduler.run(new Date(SUMMER.getTime() + MINUTE));
 
+      expect(heatedOf(4)).toBe(false);
+      expect(commands).toEqual([
+        { locationId: 2, ain: 'B-1', temperature: 16 },
+      ]);
+    });
+
+    it('should cool heated rooms when the season is not configured', async () => {
+      config = { ...config, seasonStart: undefined, seasonEnd: undefined };
+      rooms[3].heated = true;
+      events = [eventAt(1, 4, 30, 60)];
+
+      const result = await scheduler.run(NOW);
+
+      expect(result.inSeason).toBeNull();
+      expect(result.errors[0].code).toBe(HeatingErrorCode.CONFIGURATION_ERROR);
+      expect(result.actions.map((a) => [a.roomId, a.action, a.reason])).toEqual(
+        [[4, 'COOL', 'SEASON_END']],
+      );
       expect(heatedOf(4)).toBe(false);
       expect(commands).toEqual([
         { locationId: 2, ain: 'B-1', temperature: 16 },
@@ -787,6 +806,76 @@ describe('HeatingScheduler', () => {
       expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(2);
       expect(maxActive).toBe(1);
       expect(scheduler.isRunning()).toBe(false);
+    });
+  });
+
+  describe('graceful shutdown', () => {
+    it('should wait for a running heating run and not start new runs', async () => {
+      let release: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      roomsService.findAllForHeating.mockImplementationOnce(async () => {
+        await blocked;
+        return rooms.map((room) => ({ ...room }));
+      });
+
+      const run = scheduler.trigger();
+      scheduler.trigger(); // nachgeholter Lauf wird beim Shutdown verworfen
+
+      let destroyed = false;
+      const destroy = scheduler.onModuleDestroy().then(() => {
+        destroyed = true;
+      });
+
+      await Promise.resolve();
+      expect(destroyed).toBe(false);
+
+      release();
+      await run;
+      await destroy;
+
+      expect(destroyed).toBe(true);
+      expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(1);
+
+      await scheduler.handleCron();
+      expect(roomsService.findAllForHeating).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('logging', () => {
+    it('should log a persisting error only once and report its resolution', async () => {
+      const errorLog = jest.spyOn(Logger.prototype, 'error');
+      const infoLog = jest.spyOn(Logger.prototype, 'log');
+      rooms[3].heated = true;
+      clockNow = new Date(2026, 5, 15, 20, 0, 0); // außerhalb der Saison
+      unreachable.add(2);
+
+      const unreachableLogs = () =>
+        errorLog.mock.calls.filter((call) =>
+          String(call[0]).includes('FRITZBOX_UNREACHABLE'),
+        ).length;
+
+      try {
+        await scheduler.run(clockNow);
+        await scheduler.run(new Date(clockNow.getTime() + MINUTE));
+        await scheduler.run(new Date(clockNow.getTime() + 2 * MINUTE));
+
+        expect(unreachableLogs()).toBe(1);
+
+        unreachable.delete(2);
+        await scheduler.run(new Date(clockNow.getTime() + 3 * MINUTE));
+
+        expect(
+          infoLog.mock.calls.some((call) =>
+            String(call[0]).startsWith('Resolved: [FRITZBOX_UNREACHABLE]'),
+          ),
+        ).toBe(true);
+      } finally {
+        errorLog.mockRestore();
+        infoLog.mockRestore();
+      }
     });
   });
 });

@@ -4,6 +4,7 @@ import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { AllConfigType } from '../config/config.type';
+import { resolveExistingPath } from '../utils/resolve-existing-path';
 
 /**
  * Lädt und kompiliert die Handlebars-Druckvorlagen (Woche/Monat/Jahr).
@@ -26,23 +27,44 @@ export class PrintTemplateService {
 
   constructor(private readonly configService: ConfigService<AllConfigType>) {}
 
+  /*
+   * Vorlagen werden beim Build nach dist/print/templates kopiert
+   * (nest-cli.json, assets). Der frühere Pfad unter <Arbeitsverzeichnis>/src
+   * bleibt als Fallback für Deployments ohne kopierte Assets erhalten.
+   */
   private templatePath(name: string): string {
-    return path.join(
-      this.configService.getOrThrow('app.workingDirectory', { infer: true }),
-      'src',
-      'print',
-      'templates',
-      `${name}.hbs`,
-    );
+    return resolveExistingPath([
+      path.join(__dirname, 'templates', `${name}.hbs`),
+      path.join(
+        this.configService.getOrThrow('app.workingDirectory', { infer: true }),
+        'src',
+        'print',
+        'templates',
+        `${name}.hbs`,
+      ),
+    ]);
   }
 
+  /*
+   * Über die Modulauflösung von Node statt relativ zum Arbeitsverzeichnis,
+   * damit der Druck auch bei einem anderen Startverzeichnis funktioniert.
+   */
   private fullCalendarBundlePath(): string {
-    return path.join(
+    const fallback = path.join(
       this.configService.getOrThrow('app.workingDirectory', { infer: true }),
       'node_modules',
       'fullcalendar',
       'index.global.min.js',
     );
+
+    try {
+      return resolveExistingPath([
+        require.resolve('fullcalendar/index.global.min.js'),
+        fallback,
+      ]);
+    } catch {
+      return fallback;
+    }
   }
 
   /**

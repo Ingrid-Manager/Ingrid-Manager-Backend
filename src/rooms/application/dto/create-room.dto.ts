@@ -1,4 +1,10 @@
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsHexColor,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateRoomDto {
   @IsString()
@@ -20,7 +26,9 @@ export class CreateRoomDto {
   @IsBoolean()
   heated!: boolean;
 
-  @IsString()
+  // Nur Hex-Farben (#rgb, #rrggbb, ...): der Wert landet u. a. in
+  // style-Attributen der Druckvorlagen.
+  @IsHexColor()
   @IsOptional()
   color?: string;
 

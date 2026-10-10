@@ -7,6 +7,7 @@ import { MaybeType } from '../utils/types/maybe.type';
 import { MailerService } from '../mailer/mailer.service';
 import path from 'path';
 import { AllConfigType } from '../config/config.type';
+import { resolveExistingPath } from '../utils/resolve-existing-path';
 
 @Injectable()
 export class MailService {
@@ -53,15 +54,7 @@ export class MailService {
       bcc: bccAddresses.length ? bccAddresses : undefined,
       subject: emailConfirmTitle,
       text: `${url.toString()} ${emailConfirmTitle}`,
-      templatePath: path.join(
-        this.configService.getOrThrow('app.workingDirectory', {
-          infer: true,
-        }),
-        'src',
-        'mail',
-        'mail-templates',
-        'activation.hbs',
-      ),
+      templatePath: this.templatePath('activation.hbs'),
       context: {
         title: emailConfirmTitle,
         url: url.toString(),
@@ -118,15 +111,7 @@ export class MailService {
       to: mailData.to,
       subject: resetPasswordTitle,
       text: `${url.toString()} ${resetPasswordTitle}`,
-      templatePath: path.join(
-        this.configService.getOrThrow('app.workingDirectory', {
-          infer: true,
-        }),
-        'src',
-        'mail',
-        'mail-templates',
-        'reset-password.hbs',
-      ),
+      templatePath: this.templatePath('reset-password.hbs'),
       context: {
         title: resetPasswordTitle,
         url: url.toString(),
@@ -145,5 +130,23 @@ export class MailService {
         text4,
       },
     });
+  }
+
+  /*
+   * Vorlagen werden beim Build nach dist/mail/mail-templates kopiert
+   * (nest-cli.json, assets). Der frühere Pfad unter <Arbeitsverzeichnis>/src
+   * bleibt als Fallback für Deployments ohne kopierte Assets erhalten.
+   */
+  private templatePath(name: string): string {
+    return resolveExistingPath([
+      path.join(__dirname, 'mail-templates', name),
+      path.join(
+        this.configService.getOrThrow('app.workingDirectory', { infer: true }),
+        'src',
+        'mail',
+        'mail-templates',
+        name,
+      ),
+    ]);
   }
 }

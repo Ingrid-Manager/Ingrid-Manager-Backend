@@ -38,8 +38,9 @@ function constantTimeEquals(a: string, b: string): boolean {
  * 1. Der Token in der URL ist kryptografisch zufällig, einmalig nutzbar
  *    und läuft nach kurzer Zeit ab (siehe PrintHtmlCacheService) —
  *    nicht erratbar, nach dem ersten Abruf sofort ungültig.
- * 2. Der "X-App-Key"-Header muss mit PDF_SERVICE_APP_KEY übereinstimmen
- *    — demselben Secret, das der PDF-Server für seine Rückrufe nutzt.
+ * 2. Der "X-App-Key"-Header muss mit PDF_SERVICE_CALLBACK_KEY (falls
+ *    gesetzt, sonst PDF_SERVICE_APP_KEY) übereinstimmen — dem Secret, das
+ *    der PDF-Server für seine Rückrufe nutzt.
  *    Nur wer beide Geheimnisse kennt, bekommt Zugriff.
  */
 @Controller({ path: 'print-html', version: '1' })
@@ -55,9 +56,15 @@ export class PrintHtmlController {
     @Headers('x-app-key') appKey: string | undefined,
     @Res() res: Response,
   ): void {
-    const expectedKey = this.configService.get<string>('app.pdfServiceAppKey', {
-      infer: true,
-    });
+    // Eigenes Secret für den Rückruf, falls konfiguriert; sonst (wie bisher)
+    // dasselbe Secret wie für die Anfrage an den PDF-Server.
+    const expectedKey =
+      this.configService.get<string>('app.pdfServiceCallbackKey', {
+        infer: true,
+      }) ??
+      this.configService.get<string>('app.pdfServiceAppKey', {
+        infer: true,
+      });
 
     if (!expectedKey || !appKey || !constantTimeEquals(appKey, expectedKey)) {
       throw new UnauthorizedException('Ungültiger oder fehlender App-Key.');

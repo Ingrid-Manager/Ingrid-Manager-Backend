@@ -1,12 +1,19 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, ValidateIf } from 'class-validator';
+
+import { IsFritzBoxUrl } from '../../../validation/is-fritzbox-url.validator';
 
 export class CreateAvmLocationDto {
   @IsOptional()
   @IsString()
   title?: string;
 
-  @IsOptional()
+  // Leer bzw. nicht gesetzt ist erlaubt (Location ohne FRITZ!Box).
+  @ValidateIf(
+    (dto) =>
+      dto.ahaurl !== undefined && dto.ahaurl !== null && dto.ahaurl !== '',
+  )
   @IsString()
+  @IsFritzBoxUrl()
   ahaurl?: string;
 
   @IsOptional()

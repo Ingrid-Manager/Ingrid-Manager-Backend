@@ -12,6 +12,8 @@ import {
   HttpCode,
   SerializeOptions,
   Request,
+  ParseIntPipe,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -103,11 +105,19 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiParam({
     name: 'id',
-    type: String,
+    type: Number,
     required: true,
   })
-  findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
-    return this.usersService.findById(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<NullableType<User>> {
+    const user = await this.usersService.findById(id);
+
+    if (!user) {
+      throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
+    }
+
+    return user;
   }
 
   @ApiOkResponse({
@@ -120,11 +130,11 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiParam({
     name: 'id',
-    type: String,
+    type: Number,
     required: true,
   })
   update(
-    @Param('id') id: User['id'],
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateProfileDto: UpdateUserDto,
     @Request() request,
   ): Promise<User | null> {
@@ -134,11 +144,14 @@ export class UsersController {
   @Delete(':id')
   @ApiParam({
     name: 'id',
-    type: String,
+    type: Number,
     required: true,
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: User['id'], @Request() request): Promise<void> {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request,
+  ): Promise<void> {
     return this.usersService.remove(id, request.user);
   }
 }

@@ -78,11 +78,15 @@ export class UsersRelationalRepository implements UserRepository {
     return entities.map((user) => UserMapper.toDomain(user));
   }
 
-  async findByEmail(email: User['email']): Promise<NullableType<User>> {
+  async findByEmail(
+    email: User['email'],
+    options: { withDeleted?: boolean } = {},
+  ): Promise<NullableType<User>> {
     if (!email) return null;
 
     const entity = await this.usersRepository.findOne({
       where: { email },
+      withDeleted: options.withDeleted ?? false,
     });
 
     return entity ? UserMapper.toDomain(entity) : null;
@@ -125,7 +129,16 @@ export class UsersRelationalRepository implements UserRepository {
     return UserMapper.toDomain(updatedEntity);
   }
 
+  /*
+   * Soft-Delete eines Users. Die E-Mail-Adresse wird dabei entfernt: Sie
+   * ist eindeutig (Unique-Index), würde sonst eine erneute Registrierung
+   * mit derselben Adresse dauerhaft blockieren und bliebe als
+   * personenbezogenes Datum im gelöschten Datensatz zurück.
+   */
   async remove(id: User['id']): Promise<void> {
-    await this.usersRepository.softDelete(id);
+    await this.usersRepository.manager.transaction(async (manager) => {
+      await manager.update(UserEntity, { id: Number(id) }, { email: null });
+      await manager.softDelete(UserEntity, { id: Number(id) });
+    });
   }
 }

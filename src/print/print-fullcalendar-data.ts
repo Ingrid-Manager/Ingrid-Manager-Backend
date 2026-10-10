@@ -40,6 +40,25 @@ function parseHexColor(
   };
 }
 
+export const FALLBACK_ROOM_COLOR = '#999999';
+
+/**
+ * Liefert eine garantiert harmlose CSS-Farbe für die Druckvorlagen: nur
+ * Hex-Farben (#RGB, #RGBA, #RRGGBB, #RRGGBBAA, "#" optional) werden
+ * übernommen, alles andere ergibt die neutrale Standardfarbe. Verhindert,
+ * dass über eine Raumfarbe wie "red;background:url(...)" zusätzliche
+ * CSS-Deklarationen in ein style-Attribut gelangen.
+ */
+export function sanitizeHexColor(color: string | null | undefined): string {
+  const value = (color ?? '').trim();
+  const match =
+    /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(
+      value,
+    );
+
+  return match ? `#${match[1]}` : FALLBACK_ROOM_COLOR;
+}
+
 /**
  * Berechnet eine gut lesbare Textfarbe (Schwarz oder Weiß) für eine
  * gegebene Hintergrundfarbe, basierend auf der wahrgenommenen Helligkeit
@@ -127,8 +146,8 @@ export function buildWeekEvents(
     end: toLocalDateTimeIso(new Date(event.end)),
     allDay: !!event.allDay,
     extendedProps: {
-      roomColor: event.color ?? '#999999',
-      roomTextColor: contrastTextColor(event.color ?? '#999999'),
+      roomColor: sanitizeHexColor(event.color),
+      roomTextColor: contrastTextColor(sanitizeHexColor(event.color)),
       roomTitle: event.room_title,
     },
   }));
@@ -153,8 +172,8 @@ export function buildMonthEvents(
       title: `${titlePrefix}${event.title}`,
       start: toDateOnlyIso(start),
       extendedProps: {
-        roomColor: event.color ?? '#999999',
-        roomTextColor: contrastTextColor(event.color ?? '#999999'),
+        roomColor: sanitizeHexColor(event.color),
+        roomTextColor: contrastTextColor(sanitizeHexColor(event.color)),
         roomTitle: event.room_title,
       },
     };
@@ -222,8 +241,8 @@ export function buildYearEvents(
       result.push({
         date: toDateOnlyIso(cursor),
         title,
-        roomColor: event.color ?? '#999999',
-        roomTextColor: contrastTextColor(event.color ?? '#999999'),
+        roomColor: sanitizeHexColor(event.color),
+        roomTextColor: contrastTextColor(sanitizeHexColor(event.color)),
       });
       cursor.setDate(cursor.getDate() + 1);
     }

@@ -240,7 +240,8 @@ function hasAvmId(room: HeatingRoom): boolean {
 /*
  * Flur-Sonderregel für eine Location.
  *
- *   H          = { r | r.heated = true } (inkl. Flur)
+ *   H          = { r | r.heated = true } (inkl. Flur; ohne Räume ohne
+ *                Vorlaufzeit, da diese nicht kalendergesteuert sind)
  *   BRIDGE_ANY = ∃ Termin der Location mit 0 < startsIn <= 90
  *
  *   FLOOR_HEAT := !flur.heated AND |H| > 0 AND flur.avm_id vorhanden
@@ -347,7 +348,10 @@ export function planHeating(input: HeatingPlanInput): HeatingPlan {
       actions.push(decision.action);
     }
 
-    if (decision.heatedAfter) {
+    // Räume ohne Vorlaufzeit sind nicht kalendergesteuert und werden nie
+    // abgesenkt; ein (z. B. manuell) als beheizt markierter Raum dieser Art
+    // würde den Flur sonst dauerhaft warm halten.
+    if (decision.heatedAfter && hasPrelimTime(room)) {
       heatedCountByLocation.set(
         room.locationId,
         (heatedCountByLocation.get(room.locationId) ?? 0) + 1,

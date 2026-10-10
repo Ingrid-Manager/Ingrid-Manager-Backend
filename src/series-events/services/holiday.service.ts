@@ -2,15 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CalendarEvent } from '../../calendar-events/infrastructure/relational/persistence/entities/calendar-event.entity';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+
+import { resolveHolidayIds } from '../../config/holiday-ids';
 
 @Injectable()
 export class HolidayService {
-  private static readonly HOLIDAY_CATEGORY_ID = 9999;
-
   constructor(
     @InjectRepository(CalendarEvent)
     private readonly calendarRepo: Repository<CalendarEvent>,
+    private readonly configService: ConfigService,
   ) {}
+
+  private get holidayCategoryId(): number {
+    return resolveHolidayIds(this.configService).categoryId;
+  }
 
   async isSchoolHoliday(date: Date): Promise<boolean> {
     console.log('HOLIDAY CHECK', {
@@ -20,7 +26,7 @@ export class HolidayService {
     const holidays = await this.calendarRepo
       .createQueryBuilder('event')
       .where('event.categoryid = :categoryid', {
-        categoryid: HolidayService.HOLIDAY_CATEGORY_ID,
+        categoryid: this.holidayCategoryId,
       })
       .andWhere('event.deletedAt IS NULL')
       .select(['event.id', 'event.start', 'event.end', 'event.categoryid'])
@@ -39,11 +45,13 @@ export class HolidayService {
     const count = await this.calendarRepo
       .createQueryBuilder('event')
       .where('event.categoryid = :categoryid', {
-        categoryid: HolidayService.HOLIDAY_CATEGORY_ID,
+        categoryid: this.holidayCategoryId,
       })
       .andWhere('event.deletedAt IS NULL')
       .andWhere('DATE(event.start) <= DATE(:date)', { date })
-      .andWhere('DATE(event.end) >= DATE(:date)', { date })
+      // Das Ende ist exklusiv gespeichert (Tag nach dem letzten Ferientag,
+      // wie bei ganztägigen Terminen in FullCalendar)
+      .andWhere('DATE(event.end) > DATE(:date)', { date })
       .getCount();
 
     console.log('HOLIDAY RESULT', {

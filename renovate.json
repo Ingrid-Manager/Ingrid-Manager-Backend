@@ -1,5 +1,14 @@
 {
-  "extends": [
-    "config:base"
-  ]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":pinAllExceptPeerDependencies"],
+  "packageRules": [
+    {
+      "description": "NestJS-Pakete immer gemeinsam aktualisieren (Versionsdrift vermeiden)",
+      "matchPackageNames": ["@nestjs/**"],
+      "groupName": "nestjs"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  }
 }

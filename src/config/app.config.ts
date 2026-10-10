@@ -28,8 +28,8 @@ class EnvironmentVariablesValidator {
   @IsOptional()
   APP_PORT!: number;
 
+  // Pflicht: Links in Mails (Bestätigung, Passwort-Reset) hängen davon ab.
   @IsUrl({ require_tld: false })
-  @IsOptional()
   FRONTEND_DOMAIN!: string;
 
   @IsUrl({ require_tld: false })
@@ -55,6 +55,20 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   PDF_SERVICE_APP_KEY!: string;
+
+  @IsString()
+  @IsOptional()
+  PDF_SERVICE_CALLBACK_KEY!: string;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  HOLIDAY_CATEGORY_ID!: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  HOLIDAY_ROOM_ID!: number;
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -80,5 +94,12 @@ export default registerAs<AppConfig>('app', () => {
       process.env.APP_ICONURL || 'https://ingrid-manager.de/media/icon.png',
     pdfServiceBaseUrl: process.env.PDF_SERVICE_BASE_URL,
     pdfServiceAppKey: process.env.PDF_SERVICE_APP_KEY,
+    pdfServiceCallbackKey: process.env.PDF_SERVICE_CALLBACK_KEY || undefined,
+    holidayCategoryId: process.env.HOLIDAY_CATEGORY_ID
+      ? parseInt(process.env.HOLIDAY_CATEGORY_ID, 10)
+      : undefined,
+    holidayRoomId: process.env.HOLIDAY_ROOM_ID
+      ? parseInt(process.env.HOLIDAY_ROOM_ID, 10)
+      : undefined,
   };
 });

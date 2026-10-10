@@ -15,6 +15,7 @@ import {
 } from './domain/heating-error';
 import { isValidTargetTemperature } from './domain/heating-temperature';
 import { FritzBoxConnectionManager } from './fritzbox-connection-manager.service';
+import { toDiagnosticHttpError } from './diagnostic-http-error';
 
 @Injectable()
 export class HeatingService {
@@ -192,6 +193,11 @@ export class HeatingService {
     }
   }
 
+  /*
+   * Diagnoseverbindung (POST /heating/connect). Eine bestehende Verbindung
+   * wird erst nach erfolgreichem Aufbau der neuen abgemeldet, damit keine
+   * verwaisten Sessions auf der FRITZ!Box zurückbleiben.
+   */
   async connect(dto: ConnectHeatingDto) {
     const config: FritzBoxConfig = {
       id: dto.id,
@@ -201,11 +207,24 @@ export class HeatingService {
       ahaPassword: dto.ahaPassword,
     };
 
-    const fritzBox = new FritzBox(config);
+    const fritzBox = await this.diagnostic(async () => {
+      const box = new FritzBox(config);
+      await box.connect();
+      return box;
+    });
 
-    await fritzBox.connect();
-
+    const previous = this.fritzBox;
     this.fritzBox = fritzBox;
+
+    if (previous && previous !== fritzBox) {
+      await previous.disconnect().catch((error: unknown) => {
+        this.logger.warn(
+          `Previous diagnostic FRITZ!Box session could not be closed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+    }
 
     return {
       connected: fritzBox.isConnected(),
@@ -216,32 +235,20 @@ export class HeatingService {
   }
 
   testConnection() {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+    const fritzBox = this.requireConfigured();
 
     return {
-      connected: this.fritzBox.isConnected(),
-      state: this.fritzBox.getState(),
-      id: this.fritzBox.config.id,
-      title: this.fritzBox.config.title,
+      connected: fritzBox.isConnected(),
+      state: fritzBox.getState(),
+      id: fritzBox.config.id,
+      title: fritzBox.config.title,
     };
   }
 
   async getDevices() {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+    const fritzBox = this.requireConnected();
 
-    if (!this.fritzBox.isConnected()) {
-      throw new ServiceUnavailableException('FRITZ!Box is not connected');
-    }
-
-    return this.fritzBox.listDevices();
+    return this.diagnostic(() => fritzBox.listDevices());
   }
 
   async disconnect() {
@@ -251,44 +258,27 @@ export class HeatingService {
       };
     }
 
-    await this.fritzBox.disconnect();
-
-    const result = {
-      connected: false,
-      state: this.fritzBox.getState(),
-    };
-
+    const fritzBox = this.fritzBox;
     this.fritzBox = undefined;
 
-    return result;
+    await this.diagnostic(() => fritzBox.disconnect());
+
+    return {
+      connected: false,
+      state: fritzBox.getState(),
+    };
   }
 
   async getDevice(ain: string) {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+    const fritzBox = this.requireConnected();
 
-    if (!this.fritzBox.isConnected()) {
-      throw new ServiceUnavailableException('FRITZ!Box is not connected');
-    }
-
-    return this.fritzBox.devices.get(ain);
+    return this.diagnostic(() => fritzBox.devices.get(ain));
   }
 
   async getThermostats() {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+    const fritzBox = this.requireConnected();
 
-    if (!this.fritzBox.isConnected()) {
-      throw new ServiceUnavailableException('FRITZ!Box is not connected');
-    }
-
-    const devices = await this.fritzBox.devices.list();
+    const devices = await this.diagnostic(() => fritzBox.devices.list());
 
     return devices
       .filter((device) => device.capabilities.targetTemperature)
@@ -308,44 +298,28 @@ export class HeatingService {
       }));
   }
 
-  isGroup(ain: string) {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+  async isGroup(ain: string) {
+    const fritzBox = this.requireConnected();
 
-    return this.fritzBox.isGroup(ain);
+    return this.diagnostic(() => fritzBox.isGroup(ain));
   }
 
-  getGroups() {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No FRITZ!Box connection configured',
-      );
-    }
+  async getGroups() {
+    const fritzBox = this.requireConnected();
 
-    if (!this.fritzBox.isConnected()) {
-      throw new ServiceUnavailableException('FRITZ!Box is not connected');
-    }
-
-    return this.fritzBox.listGroups();
+    return this.diagnostic(() => fritzBox.listGroups());
   }
 
+  /*
+   * Diagnose-Eingriff: setzt den Sollwert direkt, ohne den persistierten
+   * Heizzustand (room.heated) der kalendergesteuerten Heizung zu ändern.
+   */
   async setTemperature(ain: string, temperature: number) {
-    if (!this.fritzBox) {
-      throw new ServiceUnavailableException(
-        'No Fritz!Box connection configured',
-      );
-    }
+    const fritzBox = this.requireConnected();
 
-    if (!this.fritzBox.isConnected()) {
-      throw new ServiceUnavailableException('FRITZ!Box is not connected');
-    }
-
-    const thermostat = this.fritzBox.thermostats.get(ain);
-
-    await thermostat.setTemperature(temperature);
+    await this.diagnostic(() =>
+      fritzBox.thermostats.get(ain).setTemperature(temperature),
+    );
 
     return {
       ain,
@@ -354,22 +328,43 @@ export class HeatingService {
   }
 
   async getTemperature(ain: string) {
+    const fritzBox = this.requireConnected();
+
+    return this.diagnostic(async () => {
+      if (await fritzBox.isGroup(ain)) {
+        return fritzBox.groups.getTemperature(ain);
+      }
+
+      return fritzBox.thermostats.get(ain).getStatus();
+    });
+  }
+
+  private requireConfigured(): FritzBox {
     if (!this.fritzBox) {
       throw new ServiceUnavailableException(
         'No FRITZ!Box connection configured',
       );
     }
 
-    if (!this.fritzBox.isConnected()) {
+    return this.fritzBox;
+  }
+
+  private requireConnected(): FritzBox {
+    const fritzBox = this.requireConfigured();
+
+    if (!fritzBox.isConnected()) {
       throw new ServiceUnavailableException('FRITZ!Box is not connected');
     }
 
-    if (await this.fritzBox.isGroup(ain)) {
-      return this.fritzBox.groups.getTemperature(ain);
+    return fritzBox;
+  }
+
+  /* Bibliotheksfehler als passende HTTP-Fehler statt HTTP 500 melden. */
+  private async diagnostic<T>(action: () => T | Promise<T>): Promise<T> {
+    try {
+      return await action();
+    } catch (error) {
+      throw toDiagnosticHttpError(error);
     }
-
-    const thermostat = this.fritzBox.thermostats.get(ain);
-
-    return thermostat.getStatus();
   }
 }
