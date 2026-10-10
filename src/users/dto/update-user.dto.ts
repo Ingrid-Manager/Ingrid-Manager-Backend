@@ -2,8 +2,7 @@ import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
 
 import { Transform, Type } from 'class-transformer';
-import { IsEmail, IsOptional, IsString } from 'class-validator';
-import { IsAppPassword } from '../../utils/validators/is-app-password.decorator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { RoleDto } from '../../roles/dto/role.dto';
 import { StatusDto } from '../../statuses/dto/status.dto';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
@@ -17,7 +16,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsAppPassword()
+  @MinLength(6)
   password?: string;
 
   provider?: string;

@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import {
-  FindOptionsWhere,
-  FindOptionsOrder,
-  Repository,
-  In,
-  Not,
-} from 'typeorm';
+import { FindOptionsWhere, FindOptionsOrder, Repository, In } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
 import { NullableType } from '../../../../../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
@@ -15,8 +9,6 @@ import { User } from '../../../../domain/user';
 import { UserRepository } from '../../user.repository';
 import { UserMapper } from '../mappers/user.mapper';
 import { IPaginationOptions } from '../../../../../utils/types/pagination-options';
-import { RoleEnum } from '../../../../../roles/roles.enum';
-import { StatusEnum } from '../../../../../statuses/statuses.enum';
 
 @Injectable()
 export class UsersRelationalRepository implements UserRepository {
@@ -147,16 +139,6 @@ export class UsersRelationalRepository implements UserRepository {
     await this.usersRepository.manager.transaction(async (manager) => {
       await manager.update(UserEntity, { id: Number(id) }, { email: null });
       await manager.softDelete(UserEntity, { id: Number(id) });
-    });
-  }
-
-  async countActiveAdmins(excludeId?: User['id']): Promise<number> {
-    return this.usersRepository.count({
-      where: {
-        role: { id: RoleEnum.admin },
-        status: { id: StatusEnum.active },
-        ...(excludeId === undefined ? {} : { id: Not(Number(excludeId)) }),
-      },
     });
   }
 }

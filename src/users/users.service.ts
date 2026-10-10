@@ -10,7 +10,7 @@ import { NullableType } from '../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserRepository } from './infrastructure/persistence/user.repository';
 import { User } from './domain/user';
-import { hashPassword } from '../utils/password';
+import bcrypt from 'bcryptjs';
 import { AuthProvidersEnum } from '../auth/auth-providers.enum';
 import { RoleEnum } from '../roles/roles.enum';
 import { StatusEnum } from '../statuses/statuses.enum';
@@ -56,7 +56,8 @@ export class UsersService {
     let password: string | undefined = undefined;
 
     if (createUserDto.password) {
-      password = await hashPassword(createUserDto.password);
+      const salt = await bcrypt.genSalt();
+      password = await bcrypt.hash(createUserDto.password, salt);
     }
 
     let email: string | null = null;
@@ -207,11 +208,11 @@ export class UsersService {
 
     let password: string | undefined = undefined;
 
-    // updateUserDto.password ist immer ein Klartext-Passwort: Aufrufer
-    // übergeben nur die tatsächlich zu ändernden Felder (kein komplettes
-    // User-Objekt mit bereits gehashtem Passwort).
     if (updateUserDto.password) {
-      password = await hashPassword(updateUserDto.password);
+      if (beforeUser && beforeUser?.password !== updateUserDto.password) {
+        const salt = await bcrypt.genSalt();
+        password = await bcrypt.hash(updateUserDto.password, salt);
+      }
     }
 
     let email: string | null | undefined = undefined;
@@ -285,11 +286,6 @@ export class UsersService {
       };
     }
 
-    await this.assertKeepsAnActiveAdmin(beforeUser, {
-      roleId: role?.id,
-      statusId: status?.id,
-    });
-
     const updated = await this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
@@ -306,43 +302,6 @@ export class UsersService {
     await this.logUserUpdate(id, beforeUser, updateUserDto, currentUser);
 
     return updated;
-  }
-
-  /*
-   * Verhindert, dass der letzte aktive Admin gelöscht, herabgestuft oder
-   * deaktiviert wird - sonst könnte niemand mehr die Anwendung verwalten.
-   */
-  private async assertKeepsAnActiveAdmin(
-    target: User,
-    change: { roleId?: unknown; statusId?: unknown; removed?: boolean },
-  ): Promise<void> {
-    const isActiveAdmin =
-      Number(target.role?.id) === RoleEnum.admin &&
-      Number(target.status?.id) === StatusEnum.active;
-
-    if (!isActiveAdmin) {
-      return;
-    }
-
-    const losesActiveAdmin =
-      change.removed === true ||
-      (change.roleId !== undefined &&
-        Number(change.roleId) !== RoleEnum.admin) ||
-      (change.statusId !== undefined &&
-        Number(change.statusId) !== StatusEnum.active);
-
-    if (!losesActiveAdmin) {
-      return;
-    }
-
-    if ((await this.usersRepository.countActiveAdmins(target.id)) === 0) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          role: 'lastActiveAdmin',
-        },
-      });
-    }
   }
 
   private async logUserUpdate(
@@ -456,8 +415,6 @@ export class UsersService {
     if (!target) {
       throw new NotFoundException(`Nutzer #${id} wurde nicht gefunden.`);
     }
-
-    await this.assertKeepsAnActiveAdmin(target, { removed: true });
 
     await this.usersRepository.remove(id);
 
