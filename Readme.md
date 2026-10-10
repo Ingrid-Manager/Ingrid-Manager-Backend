@@ -146,7 +146,6 @@ Weitere, optionale Variablen:
 
 | Variable | Bedeutung |
 |----------|-----------|
-| `APP_SWAGGER_ENABLED` | Swagger unter `/docs` (Default: nur bei `NODE_ENV=development`) |
 | `APP_LOGOURL`, `APP_ICONURL` | Logo und Icon in Mails und Ausdrucken |
 | `APP_CRYPTO_PREVIOUS_KEY` | Bisheriger Schlüssel während einer Schlüsselrotation |
 | `ORG_NAME`, `ORG_BUNDESLAND`, `ORG_EMAIL`, `ORG_TYPE`, `ORG_WEBSITE` | Angaben zur Organisation (`ORG_BUNDESLAND`, z. B. `NI`, steuert den Ferienimport) |
@@ -164,6 +163,8 @@ Weitere, optionale Variablen:
 npm run migration:run
 npm run seed:run:relational
 ```
+
+Der Seed legt außerdem die Stammdaten für den Ferienimport an: die Kategorie „Ferien“ und den versteckten Raum „Ferien Dummy“ (IDs aus `HOLIDAY_CATEGORY_ID` bzw. `HOLIDAY_ROOM_ID`, Default `9999`). Gibt es noch keine Location, wird dafür eine „Beispiel-Location“ ohne FRITZ!Box-Zugangsdaten angelegt, die in der Verwaltung ergänzt werden kann. Vorhandene Datensätze bleiben unverändert.
 
 > ⚠️ Der User-Seed legt Beispielkonten mit einem bekannten Passwort an und ist nur für Entwicklungsumgebungen gedacht.
 
@@ -245,7 +246,7 @@ Die Authentifizierung erfolgt über zwei Token, die der Login (`POST /api/v1/aut
 
 ## API-Endpunkte (Auswahl)
 
-Alle Pfade unter dem Prefix `/api`, versioniert über `/v1`. Die vollständige Dokumentation liefert Swagger unter `/docs` (siehe `APP_SWAGGER_ENABLED`).
+Alle Pfade unter dem Prefix `/api`, versioniert über `/v1`. Die vollständige Dokumentation liefert Swagger unter `/docs` (außer bei `NODE_ENV=production`).
 
 | Bereich | Endpunkte |
 |---------|-----------|
